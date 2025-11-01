@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"os/exec"
@@ -15,13 +16,13 @@ import (
 
 func main() {
 	http.HandleFunc("/screenshot", handleScreenshot)
-	fmt.Println("🚀 HTML → PNG/JPG/PDF 服务启动：http://0.0.0.0:8080/screenshot")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Println("🚀 Server running on :8080")
+	http.ListenAndServe(":8080", nil)
 }
 
 func handleScreenshot(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		http.Error(w, "请求解析失败: "+err.Error(), 400)
+		http.Error(w, "form parse error: "+err.Error(), 400)
 		return
 	}
 
@@ -30,29 +31,29 @@ func handleScreenshot(w http.ResponseWriter, r *http.Request) {
 		format = "png"
 	}
 
-	width := parseInt(r.FormValue("width"), 1200)
+	width := parseInt(r.FormValue("width"), 1280)
 	height := parseInt(r.FormValue("height"), 0)
 	quality := parseInt(r.FormValue("quality"), 100)
-	orientation := r.FormValue("orientation")
-	if orientation == "" {
-		orientation = "portrait"
-	}
+	url := r.FormValue("url")
 
 	var inputPath string
 	var cleanup bool
 
-	if file, header, err := r.FormFile("file"); err == nil {
-		defer file.Close()
-		tmpPath := filepath.Join(os.TempDir(), header.Filename)
-		out, _ := os.Create(tmpPath)
-		defer out.Close()
-		io.Copy(out, file)
+	// 支持上传 HTML 文件
+	if files, ok := r.MultipartForm.File["file"]; ok && len(files) > 0 {
+		file := files[0]
+		src, _ := file.Open()
+		defer src.Close()
+		tmpPath := filepath.Join(os.TempDir(), file.Filename)
+		dst, _ := os.Create(tmpPath)
+		defer dst.Close()
+		io.Copy(dst, src)
 		inputPath = tmpPath
 		cleanup = true
-	} else if url := r.FormValue("url"); url != "" {
+	} else if url != "" {
 		inputPath = url
 	} else {
-		http.Error(w, "请提供 file 或 url 参数", 400)
+		http.Error(w, "missing file or url", 400)
 		return
 	}
 
@@ -62,13 +63,16 @@ func handleScreenshot(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	var cmd *exec.Cmd
-	var args []string
 	var out bytes.Buffer
+	var stderr bytes.Buffer
+	var cmd *exec.Cmd
 
 	switch format {
 	case "png", "jpg", "jpeg":
-		args = []string{"--quality", strconv.Itoa(quality)}
+		args := []string{
+			"--enable-local-file-access",
+			"--quality", strconv.Itoa(quality),
+		}
 		if width > 0 {
 			args = append(args, "--width", strconv.Itoa(width))
 		}
@@ -78,26 +82,30 @@ func handleScreenshot(w http.ResponseWriter, r *http.Request) {
 		args = append(args, inputPath, "-")
 		cmd = exec.Command("wkhtmltoimage", args...)
 	case "pdf":
-		args = []string{"--orientation", orientation}
-		if width > 0 {
-			args = append(args, "--page-width", fmt.Sprintf("%dmm", width/4))
+		args := []string{
+			"--enable-local-file-access",
+			inputPath, "-",
 		}
-		if height > 0 {
-			args = append(args, "--page-height", fmt.Sprintf("%dmm", height/4))
-		}
-		args = append(args, inputPath, "-")
 		cmd = exec.Command("wkhtmltopdf", args...)
 	default:
-		http.Error(w, "format 参数必须是 png、jpg 或 pdf", 400)
+		http.Error(w, "unsupported format", 400)
 		return
 	}
 
 	cmd.Stdout = &out
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		http.Error(w, "转换失败: "+err.Error(), 500)
+		log.Printf("❌ wkhtmltoimage error: %v", err)
+		log.Printf("stderr: %s", stderr.String())
+		http.Error(w, "conversion failed: "+stderr.String(), 500)
 		return
+	}
+
+	data := out.Bytes()
+	log.Printf("✅ Output size: %d bytes", len(data))
+	if len(data) < 100 {
+		log.Printf("⚠️ Suspiciously small output, stderr: %s", stderr.String())
 	}
 
 	switch format {
@@ -108,9 +116,8 @@ func handleScreenshot(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.Header().Set("Content-Type", "image/png")
 	}
-
 	w.WriteHeader(200)
-	w.Write(out.Bytes())
+	w.Write(data)
 }
 
 func parseInt(s string, def int) int {
