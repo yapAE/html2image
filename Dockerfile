@@ -1,17 +1,14 @@
-FROM golang:1.21-bullseye
+FROM golang:1.21-bullseye AS builder
+WORKDIR /app
+COPY . .
+RUN go mod init html2image && go mod tidy && go build -o /server main.go
 
-# 安装 wkhtmltopdf (包含 wkhtmltoimage)
+FROM debian:bullseye
 RUN apt-get update && apt-get install -y \
     wkhtmltopdf \
     xfonts-75dpi xfonts-base fontconfig libjpeg62-turbo \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-COPY go.mod ./
-COPY main.go ./
-
-RUN go mod tidy && go build -o /usr/local/bin/html2image main.go
-
+COPY --from=builder /server /server
 EXPOSE 8080
-ENTRYPOINT ["html2image"]
+CMD ["/server"]
