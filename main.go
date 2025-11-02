@@ -175,8 +175,18 @@ func handleScreenshot(w http.ResponseWriter, r *http.Request) {
 
 	data := out.Bytes()
 	log.Printf("✅ Output size: %d bytes", len(data))
+	
+	// 检查输出是否有效
 	if len(data) < 100 {
 		log.Printf("⚠️ Suspiciously small output, stderr: %s", stderr.String())
+		// 检查stderr中是否包含错误信息
+		if stderr.Len() > 0 {
+			http.Error(w, "conversion failed: "+stderr.String(), 500)
+			return
+		}
+		// 如果没有错误信息但输出仍然很小，也返回错误
+		http.Error(w, "conversion failed: output too small, possibly corrupted", 500)
+		return
 	}
 
 	switch format {
