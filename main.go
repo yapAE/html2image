@@ -122,6 +122,7 @@ func handleScreenshot(w http.ResponseWriter, r *http.Request) {
 	case "png", "jpg", "jpeg":
 		args := []string{
 			"--enable-local-file-access",
+			"--quiet",
 			"--quality", strconv.Itoa(quality),
 		}
 		if width > 0 {
@@ -143,6 +144,7 @@ func handleScreenshot(w http.ResponseWriter, r *http.Request) {
 	case "pdf":
 		args := []string{
 			"--enable-local-file-access",
+			"--quiet",
 			inputPath, "-",
 		}
 		cmd = exec.Command("wkhtmltopdf", args...)
