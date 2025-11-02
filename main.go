@@ -2,22 +2,27 @@ package main
 
 import (
 	"bytes"
-	"fmt"
+	"context"
 	"io"
 	"log"
-	"mime/multipart"
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func main() {
 	http.HandleFunc("/screenshot", handleScreenshot)
+	http.HandleFunc("/health", handleHealth)
 	log.Println("🚀 Server running on :8080")
 	http.ListenAndServe(":8080", nil)
+}
+
+func handleHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
 
 func handleScreenshot(w http.ResponseWriter, r *http.Request) {
@@ -31,9 +36,36 @@ func handleScreenshot(w http.ResponseWriter, r *http.Request) {
 		format = "png"
 	}
 
+	// 验证format参数
+	if format != "png" && format != "jpg" && format != "jpeg" && format != "pdf" {
+		http.Error(w, "unsupported format: "+format, 400)
+		return
+	}
+
 	width := parseInt(r.FormValue("width"), 1280)
 	height := parseInt(r.FormValue("height"), 0)
 	quality := parseInt(r.FormValue("quality"), 100)
+	crop := r.FormValue("crop")
+	scale := parseInt(r.FormValue("scale"), 100)
+
+	// 验证参数范围
+	if width < 0 || width > 10000 {
+		http.Error(w, "width must be between 0 and 10000", 400)
+		return
+	}
+	if height < 0 || height > 10000 {
+		http.Error(w, "height must be between 0 and 10000", 400)
+		return
+	}
+	if quality < 1 || quality > 100 {
+		http.Error(w, "quality must be between 1 and 100", 400)
+		return
+	}
+	if scale < 1 || scale > 1000 {
+		http.Error(w, "scale must be between 1 and 1000", 400)
+		return
+	}
+
 	url := r.FormValue("url")
 
 	var inputPath string
@@ -42,12 +74,27 @@ func handleScreenshot(w http.ResponseWriter, r *http.Request) {
 	// 支持上传 HTML 文件
 	if files, ok := r.MultipartForm.File["file"]; ok && len(files) > 0 {
 		file := files[0]
-		src, _ := file.Open()
+		src, err := file.Open()
+		if err != nil {
+			http.Error(w, "failed to open uploaded file: "+err.Error(), 500)
+			return
+		}
 		defer src.Close()
-		tmpPath := filepath.Join(os.TempDir(), file.Filename)
-		dst, _ := os.Create(tmpPath)
-		defer dst.Close()
-		io.Copy(dst, src)
+
+		// 使用安全的临时文件名
+		tmpFile, err := os.CreateTemp("", "html2image-*.html")
+		if err != nil {
+			http.Error(w, "failed to create temporary file: "+err.Error(), 500)
+			return
+		}
+		defer tmpFile.Close()
+		tmpPath := tmpFile.Name()
+
+		_, err = io.Copy(tmpFile, src)
+		if err != nil {
+			http.Error(w, "failed to save uploaded file: "+err.Error(), 500)
+			return
+		}
 		inputPath = tmpPath
 		cleanup = true
 	} else if url != "" {
@@ -59,7 +106,11 @@ func handleScreenshot(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if cleanup {
-			os.Remove(inputPath)
+			// 确保临时文件被删除
+			err := os.Remove(inputPath)
+			if err != nil {
+				log.Printf("Warning: failed to remove temporary file %s: %v", inputPath, err)
+			}
 		}
 	}()
 
@@ -79,6 +130,14 @@ func handleScreenshot(w http.ResponseWriter, r *http.Request) {
 		if height > 0 {
 			args = append(args, "--height", strconv.Itoa(height))
 		}
+		// 添加缩放支持
+		if scale != 100 {
+			args = append(args, "--zoom", strconv.FormatFloat(float64(scale)/100.0, 'f', 2, 64))
+		}
+		// 添加裁剪支持
+		if crop == "true" || crop == "1" {
+			args = append(args, "--crop-h", strconv.Itoa(height), "--crop-w", strconv.Itoa(width))
+		}
 		args = append(args, inputPath, "-")
 		cmd = exec.Command("wkhtmltoimage", args...)
 	case "pdf":
@@ -95,10 +154,22 @@ func handleScreenshot(w http.ResponseWriter, r *http.Request) {
 	cmd.Stdout = &out
 	cmd.Stderr = &stderr
 
+	// 添加超时控制
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd = exec.CommandContext(ctx, cmd.Path, cmd.Args[1:]...)
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
 	if err := cmd.Run(); err != nil {
 		log.Printf("❌ wkhtmltoimage error: %v", err)
 		log.Printf("stderr: %s", stderr.String())
-		http.Error(w, "conversion failed: "+stderr.String(), 500)
+		// 检查是否是超时错误
+		if ctx.Err() == context.DeadlineExceeded {
+			http.Error(w, "conversion timeout", 504)
+		} else {
+			http.Error(w, "conversion failed: "+stderr.String(), 500)
+		}
 		return
 	}
 
