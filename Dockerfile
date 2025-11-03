@@ -25,12 +25,12 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /server main.go
 
 # Build plutobook from source
-# RUN git clone https://github.com/plutoprint/plutobook.git /plutobook && \
-#     cd /plutobook && \
-#     mkdir build && cd build && \
-#     cmake .. && \
-#     make -j$(nproc) && \
-#     make install
+RUN git clone https://github.com/plutoprint/plutobook.git /plutobook && \
+    cd /plutobook && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make -j$(nproc) && \
+    make install
 
 # Final stage
 FROM debian:bullseye-slim
@@ -51,14 +51,8 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-# Install wkhtmltopdf as fallback
-RUN apt-get update && apt-get install -y \
-    wkhtmltopdf \
-    --no-install-recommends && \
-    rm -rf /var/lib/apt/lists/*
-
-# Copy plutobook binary if built in previous stage
-# COPY --from=builder /usr/local/bin/plutobook /usr/local/bin/plutobook
+# Copy plutobook binary from builder stage
+COPY --from=builder /usr/local/bin/plutobook /usr/local/bin/plutobook
 
 # Create non-root user
 RUN groupadd -r appuser && useradd -r -g appuser appuser
