@@ -1,21 +1,64 @@
 <?php
-require 'vendor/autoload.php';
+// test_browsershot.php - 用于本地测试的简化版本
 
-use Spatie\Browsershot\Browsershot;
+// 模拟Browsershot类
+class MockBrowsershot {
+    private $url;
+    private $html;
+    
+    public static function url($url) {
+        $instance = new self();
+        $instance->url = $url;
+        return $instance;
+    }
+    
+    public static function html($html) {
+        $instance = new self();
+        $instance->html = $html;
+        return $instance;
+    }
+    
+    public function setOption($key, $value) {
+        // 模拟设置选项
+        return $this;
+    }
+    
+    public function windowSize($width, $height) {
+        // 模拟设置窗口大小
+        return $this;
+    }
+    
+    public function waitUntilNetworkIdle() {
+        // 模拟等待网络空闲
+        return $this;
+    }
+    
+    public function screenshot() {
+        // 模拟生成截图
+        return "mock_png_data_" . uniqid();
+    }
+    
+    public function pdf() {
+        // 模拟生成PDF
+        return "mock_pdf_data_" . uniqid();
+    }
+}
 
-function handler()
-{
+// 模拟handler函数用于测试
+function test_handler() {
     header("Access-Control-Allow-Origin: *");
     header("Access-Control-Allow-Headers: Content-Type");
 
     // 添加日志记录
     error_log("=== Browsershot Request Started ===");
     
-    $input = file_get_contents('php://input');
-    error_log("Input data: " . $input);
+    // 模拟输入数据
+    $data = [
+        'url' => 'https://example.com',
+        'format' => 'png'
+    ];
     
-    $data = json_decode($input, true);
-    error_log("Parsed data: " . print_r($data, true));
+    error_log("Input data: " . json_encode($data));
 
     $url = $data['url'] ?? null;
     $html = $data['html'] ?? null;
@@ -34,8 +77,8 @@ function handler()
 
     try {
         $shot = $url
-            ? Browsershot::url($url)
-            : Browsershot::html($html);
+            ? MockBrowsershot::url($url)
+            : MockBrowsershot::html($html);
 
         error_log("Browsershot instance created");
 
@@ -98,4 +141,6 @@ function handler()
     error_log("=== Browsershot Request Completed ===");
 }
 
-handler();
+// 运行测试
+test_handler();
+?>

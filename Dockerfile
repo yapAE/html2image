@@ -12,11 +12,21 @@ RUN apt-get update && apt-get install -y \
 # 安装 Composer
 RUN curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer
 
+# 设置工作目录
 WORKDIR /app
+
+# 复制composer文件并安装依赖
 COPY composer.json ./
 RUN composer install --no-dev --optimize-autoloader
 
+# 复制应用代码
 COPY . .
 
+# 创建日志目录
+RUN mkdir -p /var/log/php && touch /var/log/php/error.log && chmod 777 /var/log/php/error.log
+
+# 暴露端口
 EXPOSE 8080
-CMD ["php", "-S", "0.0.0.0:8080", "index.php"]
+
+# 启动命令
+CMD ["php", "-S", "0.0.0.0:8080", "-d", "error_log=/var/log/php/error.log", "index.php"]
