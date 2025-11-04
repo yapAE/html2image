@@ -27,10 +27,14 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /server main.go
 # Build plutobook from source
 RUN git clone https://github.com/plutoprint/plutobook.git /plutobook && \
     cd /plutobook && \
-    mkdir build && cd build && \
-    cmake .. && \
-    make -j$(nproc) && \
-    make install
+    # Install meson and ninja build tools \
+    apt-get update && apt-get install -y python3-pip && \
+    pip3 install meson ninja && \
+    # Build using meson \
+    meson setup builddir && \
+    meson compile -C builddir && \
+    # Install to default location \
+    DESTDIR=/usr/local meson install -C builddir
 
 # Final stage
 FROM debian:bullseye-slim

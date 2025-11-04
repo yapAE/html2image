@@ -65,21 +65,17 @@ func (p *PlutoBookConverter) ConvertURL(ctx context.Context, url string, format 
 	switch format {
 	case FormatPDF:
 		args = []string{
-			"--format", "pdf",
 			"--width", strconv.Itoa(options.Width),
 			"--scale", strconv.Itoa(options.Scale),
 		}
 		// Add user options
 		args = append(args, url, "-")
-		cmd = exec.CommandContext(timeoutCtx, "plutobook", args...)
+		cmd = exec.CommandContext(timeoutCtx, "html2pdf", args...)
 	case FormatPNG, FormatJPG, FormatJPEG:
-		formatStr := "png"
-		if format == FormatJPG || format == FormatJPEG {
-			formatStr = "jpeg"
-		}
+		// Format is determined by the command used (html2png vs html2pdf)
+		_ = format
 
 		args = []string{
-			"--format", formatStr,
 			"--width", strconv.Itoa(options.Width),
 			"--quality", strconv.Itoa(options.Quality),
 			"--scale", strconv.Itoa(options.Scale),
@@ -95,7 +91,7 @@ func (p *PlutoBookConverter) ConvertURL(ctx context.Context, url string, format 
 		}
 
 		args = append(args, url, "-")
-		cmd = exec.CommandContext(timeoutCtx, "plutobook", args...)
+		cmd = exec.CommandContext(timeoutCtx, "html2png", args...)
 	default:
 		return nil, fmt.Errorf("unsupported format: %s", format)
 	}
