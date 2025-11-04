@@ -1,0 +1,31 @@
+edition: 1.0.0
+name: browsershot-fc
+access: default
+
+services:
+  browsershot:
+    component: fc
+    props:
+      region: cn-hongkong
+      service:
+        name: browsershot-service
+        description: "HTML/URL 转 PNG/PDF 截图服务"
+        internetAccess: true
+      function:
+        name: browsershot-func
+        description: "使用 Browsershot 的截图函数"
+        runtime: custom-container
+        memorySize: 2048
+        timeout: 60
+        customContainerConfig:
+          image: crpi-xxxx.cn-hongkong.cr.aliyuncs.com/yourrepo/browsershot:latest
+          port: 9000
+        environmentVariables:
+          NODE_PATH: /usr/lib/node_modules
+      triggers:
+        - name: httpTrigger
+          type: http
+          qualifier: LATEST
+          config:
+            authType: anonymous
+            methods: ["GET", "POST"]
