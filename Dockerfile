@@ -22,9 +22,9 @@ WORKDIR /tmp
 RUN git clone https://github.com/plutoprint/plutobook.git && \
     cd plutobook && \
     /opt/python/cp312-cp312/bin/python3 -m pip install meson ninja && \
-    meson setup build --buildtype=release --prefix=/usr -Dtools=enabled && \
-    meson compile -C build && \
-    meson install -C build --strip
+    /opt/python/cp312-cp312/bin/python3 -m meson setup build --buildtype=release --prefix=/usr -Dtools=enabled && \
+    /opt/python/cp312-cp312/bin/python3 -m meson compile -C build && \
+    /opt/python/cp312-cp312/bin/python3 -m meson install -C build --strip
 
 # Switch to a Go environment
 RUN dnf install -y golang && dnf clean all
