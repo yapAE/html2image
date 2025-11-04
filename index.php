@@ -7,8 +7,13 @@ function handler()
 {
     header("Access-Control-Allow-Origin: *");
     header("Access-Control-Allow-Headers: Content-Type");
+    header("Access-Control-Allow-Methods: POST, OPTIONS");
 
-    // 添加日志记录
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        http_response_code(204);
+        exit;
+    }
+
     error_log("=== Browsershot Request Started ===");
     
     $input = file_get_contents('php://input');
@@ -26,7 +31,6 @@ function handler()
     error_log("Format: " . $format);
 
     if (!$url && !$html) {
-        error_log("Error: Missing url or html parameter");
         http_response_code(400);
         echo json_encode(['error' => '必须提供 url 或 html']);
         return;
@@ -39,9 +43,18 @@ function handler()
 
         error_log("Browsershot instance created");
 
+        // === 环境变量控制沙盒模式 ===
+        $sandboxEnabled = getenv('ENABLE_SANDBOX') === 'true';
+        $args = $sandboxEnabled
+            ? [] // 本地模式，保留沙盒
+            : ['--no-sandbox', '--disable-setuid-sandbox'];
+
+        error_log("Sandbox mode: " . ($sandboxEnabled ? "ENABLED" : "DISABLED"));
+
         $shot
-            ->setOption('no-sandbox', true)
-            ->setOption('disable-setuid-sandbox', true)
+            ->setOption('args', $args)
+            ->setOption('executablePath', getenv('PUPPETEER_EXECUTABLE_PATH') ?: '/usr/bin/chromium')
+            ->setOption('headless', 'new')
             ->windowSize(1280, 800)
             ->waitUntilNetworkIdle();
 
@@ -52,38 +65,33 @@ function handler()
                 error_log("Generating PNG screenshot");
                 $image = $shot->screenshot();
                 error_log("PNG generated, size: " . strlen($image) . " bytes");
-                
                 if (strlen($image) < 100) {
-                    error_log("Error: Generated PNG too small, possibly corrupted");
                     http_response_code(500);
-                    echo json_encode(['error' => 'Generated image too small, possibly corrupted']);
+                    echo json_encode(['error' => 'Generated PNG too small, possibly corrupted']);
                     return;
                 }
-                
                 header('Content-Type: image/png');
                 header('Content-Length: ' . strlen($image));
                 echo $image;
                 error_log("PNG response sent");
                 break;
+
             case 'pdf':
                 error_log("Generating PDF");
                 $pdf = $shot->pdf();
                 error_log("PDF generated, size: " . strlen($pdf) . " bytes");
-                
                 if (strlen($pdf) < 100) {
-                    error_log("Error: Generated PDF too small, possibly corrupted");
                     http_response_code(500);
                     echo json_encode(['error' => 'Generated PDF too small, possibly corrupted']);
                     return;
                 }
-                
                 header('Content-Type: application/pdf');
                 header('Content-Length: ' . strlen($pdf));
                 echo $pdf;
                 error_log("PDF response sent");
                 break;
+
             default:
-                error_log("Error: Unsupported format " . $format);
                 http_response_code(400);
                 echo json_encode(['error' => 'format 仅支持 png/pdf']);
                 break;
@@ -94,7 +102,7 @@ function handler()
         http_response_code(500);
         echo json_encode(['error' => $e->getMessage()]);
     }
-    
+
     error_log("=== Browsershot Request Completed ===");
 }
 
