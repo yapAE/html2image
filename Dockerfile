@@ -1,25 +1,33 @@
 # Build stage
-FROM golang:1.21-bullseye AS builder
-WORKDIR /app
+FROM quay.io/pypa/manylinux_2_28_x86_64:latest AS builder
 
 # Install build dependencies for plutobook
-RUN apt-get update && apt-get install -y \
+RUN dnf install -y \
     git \
-    build-essential \
-    cmake \
+    gcc-c++ \
     pkg-config \
-    python3-pip \
-    libexpat1-dev \
-    libicu-dev \
-    libfreetype6-dev \
-    libfontconfig1-dev \
-    libharfbuzz-dev \
-    libcairo2-dev \
-    libcurl4-openssl-dev \
-    libjpeg-turbo8-dev \
-    libpng-dev \
-    libwebp-dev \
-    && rm -rf /var/lib/apt/lists/*
+    libcurl-devel \
+    libicu-devel \
+    bzip2-devel \
+    brotli-devel \
+    gperf \
+    && dnf clean all
+
+# Install meson and ninja
+RUN /opt/python/cp312-cp312/bin/python3 -m pip install --upgrade pip meson ninja
+
+WORKDIR /tmp
+
+# Build plutobook from source
+RUN git clone https://github.com/plutoprint/plutobook.git && \
+    cd plutobook && \
+    /opt/python/cp312-cp312/bin/python3 -m pip install meson ninja && \
+    meson setup build --buildtype=release --prefix=/usr -Dtools=enabled && \
+    meson compile -C build && \
+    meson install -C build --strip
+
+# Switch to a Go environment
+RUN dnf install -y golang && dnf clean all
 
 # Copy go mod files first for better caching
 COPY go.mod go.sum ./
@@ -43,27 +51,26 @@ RUN git clone https://github.com/plutoprint/plutobook.git /plutobook && \
     DESTDIR=/usr/local meson install -C builddir
 
 # Final stage
-FROM debian:bullseye-slim
+FROM quay.io/pypa/manylinux_2_28_x86_64:latest
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y \
+RUN dnf install -y \
     curl \
     ca-certificates \
     fontconfig \
-    libexpat1 \
-    libicu72 \
-    libfreetype6 \
-    libharfbuzz0b \
-    libcairo2 \
-    libcurl4 \
-    libjpeg-turbo8 \
-    libpng16-16 \
-    libwebp7 \
-    --no-install-recommends && \
-    rm -rf /var/lib/apt/lists/*
+    libcurl \
+    libicu \
+    freetype \
+    harfbuzz \
+    cairo \
+    libjpeg-turbo \
+    libpng \
+    libwebp \
+    && dnf clean all
 
-# Copy plutobook binary from builder stage
-COPY --from=builder /usr/local/bin/plutobook /usr/local/bin/plutobook
+# Copy plutobook binaries from builder stage
+COPY --from=builder /usr/bin/html2pdf /usr/bin/html2pdf
+COPY --from=builder /usr/bin/html2png /usr/bin/html2png
 
 # Create non-root user
 RUN groupadd -r appuser && useradd -r -g appuser appuser
