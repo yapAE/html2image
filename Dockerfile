@@ -8,10 +8,17 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     pkg-config \
-    libfontconfig1-dev \
+    python3-pip \
+    libexpat1-dev \
+    libicu-dev \
     libfreetype6-dev \
-    libjpeg62-turbo-dev \
+    libfontconfig1-dev \
+    libharfbuzz-dev \
+    libcairo2-dev \
+    libcurl4-openssl-dev \
+    libjpeg-turbo8-dev \
     libpng-dev \
+    libwebp-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy go mod files first for better caching
@@ -28,10 +35,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /server main.go
 RUN git clone https://github.com/plutoprint/plutobook.git /plutobook && \
     cd /plutobook && \
     # Install meson and ninja build tools \
-    apt-get update && apt-get install -y python3-pip && \
     pip3 install meson ninja && \
-    # Build using meson \
-    meson setup builddir && \
+    # Build using meson with tools enabled \
+    meson setup builddir -Dtools=enabled && \
     meson compile -C builddir && \
     # Install to default location \
     DESTDIR=/usr/local meson install -C builddir
@@ -44,14 +50,15 @@ RUN apt-get update && apt-get install -y \
     curl \
     ca-certificates \
     fontconfig \
+    libexpat1 \
+    libicu72 \
     libfreetype6 \
-    libjpeg62-turbo \
+    libharfbuzz0b \
+    libcairo2 \
+    libcurl4 \
+    libjpeg-turbo8 \
     libpng16-16 \
-    libx11-6 \
-    libxext6 \
-    libxrender1 \
-    xfonts-75dpi \
-    xfonts-base \
+    libwebp7 \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
