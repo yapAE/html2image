@@ -29,6 +29,8 @@ RUN git clone https://github.com/plutoprint/plutobook.git && \
 # Switch to a Go environment
 RUN dnf install -y golang && dnf clean all
 
+WORKDIR /app
+
 # Copy go mod files first for better caching
 COPY go.mod go.sum ./
 RUN go mod download
@@ -38,17 +40,6 @@ COPY . .
 
 # Build the binary
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /server main.go
-
-# Build plutobook from source
-RUN git clone https://github.com/plutoprint/plutobook.git /plutobook && \
-    cd /plutobook && \
-    # Install meson and ninja build tools \
-    pip3 install meson ninja && \
-    # Build using meson with tools enabled \
-    meson setup builddir -Dtools=enabled && \
-    meson compile -C builddir && \
-    # Install to default location \
-    DESTDIR=/usr/local meson install -C builddir
 
 # Final stage
 FROM quay.io/pypa/manylinux_2_28_x86_64:latest
