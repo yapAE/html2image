@@ -46,6 +46,106 @@ curl -X POST https://your-function-domain/screenshot \
   --output test.pdf
 ```
 
+### 3️⃣ 高级参数使用示例
+
+```bash
+# 设置窗口大小并截取完整页面
+curl -X POST https://your-function-domain/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com","format":"png","windowSize":{"width":1920,"height":1080},"fullPage":true}' \
+  --output page.png
+
+# 设备模拟（iPhone X）
+curl -X POST https://your-function-domain/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com","format":"png","device":"iPhone X"}' \
+  --output mobile.png
+
+# 延迟截图（等待页面加载完成）
+curl -X POST https://your-function-domain/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com","format":"png","delay":3000}' \
+  --output page.png
+
+# 等待网络空闲后截图
+curl -X POST https://your-function-domain/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com","format":"png","waitUntilNetworkIdle":true}' \
+  --output page.png
+
+# 生成 PDF 并设置格式
+curl -X POST https://your-function-domain/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com","format":"pdf","pdfFormat":"A4","landscape":true}' \
+  --output document.pdf
+
+# 上传到阿里云 OSS
+curl -X POST https://your-function-domain/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com","format":"png","uploadToOSS":true,"ossObjectName":"my-screenshots/test.png"}' \
+  --output result.json
+```
+
+### 4️⃣ 批量处理示例
+
+```bash
+# 批量处理多个 URL
+curl -X POST https://your-function-domain/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"urls":["https://example.com","https://google.com"],"format":"png"}' \
+  --output batch_result.json
+
+# 批量处理多个 HTML 内容
+curl -X POST https://your-function-domain/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"htmls":["<h1>Page 1</h1>","<h1>Page 2</h1>"],"format":"png"}' \
+  --output batch_result.json
+
+# 批量处理复杂项目（每个项目可以有自己的参数）
+curl -X POST https://your-function-domain/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"items":[{"url":"https://example.com","format":"png"},{"html":"<h1>Test</h1>","format":"pdf","pdfFormat":"A4"}]}' \
+  --output batch_result.json
+
+# 批量处理并上传到 OSS
+curl -X POST https://your-function-domain/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"urls":["https://example.com","https://google.com"],"format":"png","uploadToOSS":true}' \
+  --output batch_result.json
+```
+
+## ⚙️ 支持的参数
+
+### 单个处理参数
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `url` | string | 要截图的网页 URL |
+| `html` | string | 要截图的 HTML 内容 |
+| `format` | string | 输出格式：`png` 或 `pdf` |
+| `windowSize` | object | 窗口大小：`{"width": 1280, "height": 800}` |
+| `device` | string | 设备模拟：如 `"iPhone X"` |
+| `fullPage` | boolean | 是否截取完整页面 |
+| `delay` | number | 延迟截图时间（毫秒） |
+| `waitUntilNetworkIdle` | boolean | 等待网络空闲 |
+| `userAgent` | string | 自定义 User Agent |
+| `mobile` | boolean | 移动设备模式 |
+| `touch` | boolean | 触摸模式 |
+| `hideBackground` | boolean | 隐藏背景 |
+| `disableImages` | boolean | 禁用图片 |
+| `pdfFormat` | string | PDF 格式：`A4`, `Letter` 等 |
+| `landscape` | boolean | PDF 横向模式 |
+| `uploadToOSS` | boolean | 是否上传到阿里云 OSS |
+| `ossObjectName` | string | OSS 对象名称 |
+
+### 批量处理参数
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `urls` | array | URL 数组，如 `["https://example.com", "https://google.com"]` |
+| `htmls` | array | HTML 内容数组 |
+| `items` | array | 复杂项目数组，每个项目可以包含上述所有参数 |
+
 ## 📦 部署
 
 ```bash
