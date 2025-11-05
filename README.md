@@ -20,10 +20,17 @@
 
 ```
 browsershot-fc/
- ├─ index.php
- ├─ composer.json
- ├─ Dockerfile
- ├─ s.yaml
+ ├─ index.php              # 入口文件
+ ├─ composer.json          # 依赖配置
+ ├─ Dockerfile             # Docker 配置
+ ├─ s.yaml                 # 部署配置
+ ├─ src/                   # 源代码目录
+ │   ├─ Controller/        # 控制器层
+ │   │   └─ ScreenshotController.php
+ │   ├─ Service/           # 服务层
+ │   │   └─ ScreenshotService.php
+ │   └─ Model/             # 数据模型层（预留）
+ └─ tests/                 # 测试目录（预留）
 ```
 
 ## 🧪 调用测试
