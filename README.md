@@ -155,7 +155,94 @@ curl -X POST https://your-function-domain/screenshot \
 
 ## 📦 部署
 
-```bash
+```
 npm install -g @serverless-devs/s
 s deploy
 ```
+
+# HTML to Image/PDF Service
+
+这是一个基于PHP和Browsershot的Web服务，可以将HTML内容转换为图像或PDF文件。
+
+## 功能特性
+
+- 将网页URL或HTML内容转换为PNG图像或PDF文档
+- 支持批量处理多个URL或HTML内容
+- 支持多种截图参数配置（窗口大小、设备模拟、全页截图等）
+- 支持将生成的文件上传到阿里云OSS
+- 统一的API响应格式，便于前端处理
+
+## 环境要求
+
+- PHP 8.2+
+- Composer
+- Chromium浏览器
+
+## 安装步骤
+
+1. 克隆项目代码
+2. 安装依赖：`composer install`
+3. 启动服务：`php -S localhost:8080`
+
+## API接口
+
+### 统一响应格式
+
+#### 成功响应
+```json
+{
+  "success": true,
+  "data": {},
+  "message": "操作成功"
+}
+```
+
+#### 错误响应
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "错误描述"
+  },
+  "data": null
+}
+```
+
+### 接口示例
+
+详细使用示例请查看 [examples.md](examples.md) 文件。
+
+## 项目结构
+
+```
+.
+├── src/
+│   ├── Controller/           # 控制器层
+│   ├── Service/              # 服务层
+│   └── Utils/                # 工具类
+├── examples.md              # 使用示例
+├── index.php                # 入口文件
+└── composer.json            # 依赖配置
+```
+
+## 配置环境变量
+
+如需上传到阿里云OSS，请设置以下环境变量：
+
+- `OSS_ACCESS_KEY_ID`
+- `OSS_ACCESS_KEY_SECRET`
+- `OSS_ENDPOINT`
+- `OSS_BUCKET`
+
+如需自定义Chromium路径，请设置：
+
+- `PUPPETEER_EXECUTABLE_PATH`
+
+## 错误处理
+
+所有错误都遵循统一的响应格式，便于前端处理。
+
+## 许可证
+
+MIT

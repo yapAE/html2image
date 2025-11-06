@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Service\ScreenshotService;
+use App\Utils\ApiResponse;
 
 class ScreenshotController
 {
@@ -58,13 +59,13 @@ class ScreenshotController
         // 参数验证
         if (!$url && !$html) {
             http_response_code(400);
-            echo json_encode(['error' => '必须提供 url 或 html']);
+            echo json_encode(ApiResponse::error('MISSING_REQUIRED_FIELD', '必须提供 url 或 html'));
             return;
         }
         
         if ($format !== 'png' && $format !== 'pdf') {
             http_response_code(400);
-            echo json_encode(['error' => 'format 仅支持 png/pdf']);
+            echo json_encode(ApiResponse::error('UNSUPPORTED_FORMAT', 'format 仅支持 png/pdf'));
             return;
         }
 
@@ -73,24 +74,25 @@ class ScreenshotController
             
             if (isset($result['ossUrl'])) {
                 // 上传到 OSS 的情况
-                echo json_encode($result);
+                header('Content-Type: application/json');
+                echo json_encode(ApiResponse::ossUpload($result['type'], $result['ossUrl']));
             } else {
                 // 直接返回数据的情况
                 if ($result['type'] === 'png') {
                     header('Content-Type: image/png');
                     header('Content-Length: ' . $result['size']);
-                    echo base64_decode($result['data']);
+                    echo $result['data'];
                 } else {
                     header('Content-Type: application/pdf');
                     header('Content-Length: ' . $result['size']);
-                    echo base64_decode($result['data']);
+                    echo $result['data'];
                 }
             }
         } catch (\Exception $e) {
             error_log("Exception occurred: " . $e->getMessage());
             error_log("Exception trace: " . $e->getTraceAsString());
             http_response_code(500);
-            echo json_encode(['error' => $e->getMessage()]);
+            echo json_encode(ApiResponse::error('INTERNAL_ERROR', $e->getMessage()));
         }
 
         error_log("=== Browsershot Request Completed ===");
@@ -110,13 +112,13 @@ class ScreenshotController
             
             // 返回结果
             header('Content-Type: application/json');
-            echo json_encode($result);
+            echo json_encode(ApiResponse::batchResult($result['results'], $result['errors']));
             
             error_log("Batch request completed. Success: " . $result['summary']['success'] . ", Failed: " . $result['summary']['failed']);
         } catch (\Exception $e) {
             error_log("Batch processing error: " . $e->getMessage());
             http_response_code(500);
-            echo json_encode(['error' => 'Batch processing failed: ' . $e->getMessage()]);
+            echo json_encode(ApiResponse::error('INTERNAL_ERROR', '批量处理失败: ' . $e->getMessage()));
         }
     }
 }

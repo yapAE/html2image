@@ -38,7 +38,7 @@ class ScreenshotService
         $landscape = $data['landscape'] ?? false;
 
         if (!$url && !$html) {
-            throw new \Exception('必须提供 url 或 html');
+            throw new \InvalidArgumentException('必须提供 url 或 html');
         }
         
         $shot = $url
@@ -59,70 +59,70 @@ class ScreenshotService
         if ($windowSize && isset($windowSize['width']) && isset($windowSize['height'])) {
             if (!is_numeric($windowSize['width']) || !is_numeric($windowSize['height']) || 
                 $windowSize['width'] <= 0 || $windowSize['height'] <= 0) {
-                throw new \Exception('windowSize 的 width 和 height 必须是正整数');
+                throw new \InvalidArgumentException('windowSize 的 width 和 height 必须是正整数');
             }
             $shot->windowSize((int)$windowSize['width'], (int)$windowSize['height']);
         }
         
         if ($device) {
             if (!is_string($device)) {
-                throw new \Exception('device 必须是字符串');
+                throw new \InvalidArgumentException('device 必须是字符串');
             }
             $shot->device($device);
         }
         
         if ($fullPage) {
             if (!is_bool($fullPage)) {
-                throw new \Exception('fullPage 必须是布尔值');
+                throw new \InvalidArgumentException('fullPage 必须是布尔值');
             }
             $shot->fullPage();
         }
         
         if ($delay) {
             if (!is_numeric($delay) || $delay < 0) {
-                throw new \Exception('delay 必须是非负整数');
+                throw new \InvalidArgumentException('delay 必须是非负整数');
             }
             $shot->setDelay((int)$delay);
         }
         
         if ($waitUntilNetworkIdle) {
             if (!is_bool($waitUntilNetworkIdle)) {
-                throw new \Exception('waitUntilNetworkIdle 必须是布尔值');
+                throw new \InvalidArgumentException('waitUntilNetworkIdle 必须是布尔值');
             }
             $shot->waitUntilNetworkIdle();
         }
         
         if ($userAgent) {
             if (!is_string($userAgent)) {
-                throw new \Exception('userAgent 必须是字符串');
+                throw new \InvalidArgumentException('userAgent 必须是字符串');
             }
             $shot->userAgent($userAgent);
         }
         
         if ($mobile) {
             if (!is_bool($mobile)) {
-                throw new \Exception('mobile 必须是布尔值');
+                throw new \InvalidArgumentException('mobile 必须是布尔值');
             }
             $shot->mobile();
         }
         
         if ($touch) {
             if (!is_bool($touch)) {
-                throw new \Exception('touch 必须是布尔值');
+                throw new \InvalidArgumentException('touch 必须是布尔值');
             }
             $shot->touch();
         }
         
         if ($hideBackground) {
             if (!is_bool($hideBackground)) {
-                throw new \Exception('hideBackground 必须是布尔值');
+                throw new \InvalidArgumentException('hideBackground 必须是布尔值');
             }
             $shot->hideBackground();
         }
         
         if ($disableImages) {
             if (!is_bool($disableImages)) {
-                throw new \Exception('disableImages 必须是布尔值');
+                throw new \InvalidArgumentException('disableImages 必须是布尔值');
             }
             $shot->disableImages();
         }
@@ -130,14 +130,14 @@ class ScreenshotService
         if ($format === 'pdf') {
             if ($pdfFormat) {
                 if (!is_string($pdfFormat)) {
-                    throw new \Exception('pdfFormat 必须是字符串');
+                    throw new \InvalidArgumentException('pdfFormat 必须是字符串');
                 }
                 $shot->format($pdfFormat);
             }
             
             if ($landscape) {
                 if (!is_bool($landscape)) {
-                    throw new \Exception('landscape 必须是布尔值');
+                    throw new \InvalidArgumentException('landscape 必须是布尔值');
                 }
                 $shot->landscape();
             }
@@ -157,13 +157,12 @@ class ScreenshotService
                     }
                     return [
                         'type' => 'png',
-                        'ossUrl' => $result['url'],
-                        'message' => 'PNG generated and uploaded to OSS'
+                        'ossUrl' => $result['url']
                     ];
                 } else {
                     return [
                         'type' => 'png',
-                        'data' => base64_encode($image),
+                        'data' => $image,
                         'size' => strlen($image)
                     ];
                 }
@@ -181,19 +180,18 @@ class ScreenshotService
                     }
                     return [
                         'type' => 'pdf',
-                        'ossUrl' => $result['url'],
-                        'message' => 'PDF generated and uploaded to OSS'
+                        'ossUrl' => $result['url']
                     ];
                 } else {
                     return [
                         'type' => 'pdf',
-                        'data' => base64_encode($pdf),
+                        'data' => $pdf,
                         'size' => strlen($pdf)
                     ];
                 }
                 
             default:
-                throw new \Exception('format 仅支持 png/pdf');
+                throw new \InvalidArgumentException('format 仅支持 png/pdf');
         }
     }
     
