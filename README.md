@@ -240,14 +240,45 @@ s deploy
 
 如需上传到阿里云OSS，请设置以下环境变量：
 
-- `OSS_ACCESS_KEY_ID`
-- `OSS_ACCESS_KEY_SECRET`
-- `OSS_ENDPOINT`
-- `OSS_BUCKET`
+### Linux/macOS 系统：
+```bash
+export OSS_ACCESS_KEY_ID=your_access_key_id
+export OSS_ACCESS_KEY_SECRET=your_access_key_secret
+export OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com
+export OSS_BUCKET=your_bucket_name
+```
 
+### Windows 系统（命令提示符）：
+```cmd
+set OSS_ACCESS_KEY_ID=your_access_key_id
+set OSS_ACCESS_KEY_SECRET=your_access_key_secret
+set OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com
+set OSS_BUCKET=your_bucket_name
+```
+
+### Windows 系统（PowerShell）：
+```powershell
+$env:OSS_ACCESS_KEY_ID="your_access_key_id"
+$env:OSS_ACCESS_KEY_SECRET="your_access_key_secret"
+$env:OSS_ENDPOINT="oss-cn-hangzhou.aliyuncs.com"
+$env:OSS_BUCKET="your_bucket_name"
+```
+
+### Docker 环境：
+在docker run命令中添加：
+```bash
+docker run -e OSS_ACCESS_KEY_ID=your_access_key_id \
+           -e OSS_ACCESS_KEY_SECRET=your_access_key_secret \
+           -e OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com \
+           -e OSS_BUCKET=your_bucket_name \
+           your_image_name
+```
+
+### 自定义Chromium路径：
 如需自定义Chromium路径，请设置：
-
-- `PUPPETEER_EXECUTABLE_PATH`
+```bash
+export PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+```
 
 ## 错误处理
 
