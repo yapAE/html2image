@@ -55,7 +55,7 @@ curl -X POST https://your-function-domain/screenshot \
 
 ### 3️⃣ 高级参数使用示例
 
-```bash
+```
 # 设置窗口大小并截取完整页面
 curl -X POST https://your-function-domain/screenshot \
   -H "Content-Type: application/json" \
@@ -95,7 +95,7 @@ curl -X POST https://your-function-domain/screenshot \
 
 ### 4️⃣ 批量处理示例
 
-```bash
+```
 # 批量处理多个 URL
 curl -X POST https://your-function-domain/screenshot \
   -H "Content-Type: application/json" \
@@ -170,6 +170,9 @@ s deploy
 - 支持批量处理多个URL或HTML内容
 - 支持多种截图参数配置（窗口大小、设备模拟、全页截图等）
 - 支持将生成的文件上传到阿里云OSS
+- 双路由模式支持：
+  - `/screenshot` - 传统路由，直接返回二进制数据（适用于文件下载）
+  - `/api/screenshot` - API路由，返回统一的JSON格式响应（适用于API调用）
 - 统一的API响应格式，便于前端处理
 
 ## 环境要求
@@ -186,10 +189,17 @@ s deploy
 
 ## API接口
 
+### 路由说明
+
+本服务提供两种路由方式来满足不同需求：
+
+1. `/screenshot` - 传统路由，直接返回二进制数据（适用于文件下载）
+2. `/api/screenshot` - API路由，返回统一的JSON格式响应（适用于API调用）
+
 ### 统一响应格式
 
 #### 成功响应
-```json
+```
 {
   "success": true,
   "data": {},
@@ -198,7 +208,7 @@ s deploy
 ```
 
 #### 错误响应
-```json
+```
 {
   "success": false,
   "error": {

@@ -1,5 +1,12 @@
 # Browsershot FC Service 使用示例
 
+## API 路由说明
+
+本服务提供两种路由方式来满足不同需求：
+
+1. `/screenshot` - 传统路由，直接返回二进制数据（适用于文件下载）
+2. `/api/screenshot` - API路由，返回统一的JSON格式响应（适用于API调用）
+
 ## API 响应格式说明
 
 ### 成功响应格式
@@ -25,7 +32,28 @@
 }
 ```
 
-## 1. 单个 URL 截图（返回 PNG 二进制数据）
+## 1. 单个 URL 截图（使用API路由返回JSON）
+
+```bash
+curl -X POST http://localhost:8080/api/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com","format":"png"}'
+```
+
+成功响应示例：
+```json
+{
+  "success": true,
+  "data": {
+    "type": "png",
+    "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+    "size": 100
+  },
+  "message": "PNG截图生成成功"
+}
+```
+
+## 2. 单个 URL 截图（使用传统路由返回二进制数据）
 
 ```bash
 curl -X POST http://localhost:8080/screenshot \
@@ -34,9 +62,30 @@ curl -X POST http://localhost:8080/screenshot \
   --output screenshot.png
 ```
 
-注意：当不指定`uploadToOSS`参数或设置为`false`时，直接返回二进制数据流。
+注意：当使用传统路由且不指定`uploadToOSS`参数或设置为`false`时，直接返回二进制数据流。
 
-## 2. HTML 内容截图（返回 PDF 二进制数据）
+## 3. HTML 内容截图（使用API路由）
+
+```bash
+curl -X POST http://localhost:8080/api/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"html":"<h1>Hello World</h1><p>This is a test.</p>","format":"pdf"}'
+```
+
+成功响应示例：
+```json
+{
+  "success": true,
+  "data": {
+    "type": "pdf",
+    "data": "JVBERi0xLjQKJcOkw7zDtsO...", // Base64编码的PDF数据
+    "size": 2048
+  },
+  "message": "PDF文档生成成功"
+}
+```
+
+## 4. HTML 内容截图（使用传统路由返回二进制数据）
 
 ```bash
 curl -X POST http://localhost:8080/screenshot \
@@ -45,28 +94,26 @@ curl -X POST http://localhost:8080/screenshot \
   --output document.pdf
 ```
 
-## 3. 带参数的截图
+## 5. 带参数的截图
 
 ```bash
-curl -X POST http://localhost:8080/screenshot \
+curl -X POST http://localhost:8080/api/screenshot \
   -H "Content-Type: application/json" \
-  -d '{"url":"https://example.com","format":"png","windowSize":{"width":1920,"height":1080},"fullPage":true}' \
-  --output fullpage.png
+  -d '{"url":"https://example.com","format":"png","windowSize":{"width":1920,"height":1080},"fullPage":true}'
 ```
 
-## 4. 设备模拟截图
+## 6. 设备模拟截图
 
 ```bash
-curl -X POST http://localhost:8080/screenshot \
+curl -X POST http://localhost:8080/api/screenshot \
   -H "Content-Type: application/json" \
-  -d '{"url":"https://example.com","format":"png","device":"iPhone X"}' \
-  --output mobile.png
+  -d '{"url":"https://example.com","format":"png","device":"iPhone X"}'
 ```
 
-## 5. 批量处理多个 URL
+## 7. 批量处理多个 URL
 
 ```bash
-curl -X POST http://localhost:8080/screenshot \
+curl -X POST http://localhost:8080/api/screenshot \
   -H "Content-Type: application/json" \
   -d '{"urls":["https://example.com","https://google.com","https://github.com"],"format":"png"}'
 ```
@@ -95,26 +142,26 @@ curl -X POST http://localhost:8080/screenshot \
 }
 ```
 
-## 6. 批量处理多个 HTML 内容
+## 8. 批量处理多个 HTML 内容
 
 ```bash
-curl -X POST http://localhost:8080/screenshot \
+curl -X POST http://localhost:8080/api/screenshot \
   -H "Content-Type: application/json" \
   -d '{"htmls":["<h1>Page 1</h1><p>Content 1</p>","<h1>Page 2</h1><p>Content 2</p>"],"format":"png"}'
 ```
 
-## 7. 复杂批量处理（每个项目可以有自己的参数）
+## 9. 复杂批量处理（每个项目可以有自己的参数）
 
 ```bash
-curl -X POST http://localhost:8080/screenshot \
+curl -X POST http://localhost:8080/api/screenshot \
   -H "Content-Type: application/json" \
   -d '{"items":[{"url":"https://example.com","format":"png","fullPage":true},{"html":"<h1>Test PDF</h1><p>PDF content</p>","format":"pdf","pdfFormat":"A4"}]}'
 ```
 
-## 8. 截图并上传到 OSS
+## 10. 截图并上传到 OSS
 
 ```bash
-curl -X POST http://localhost:8080/screenshot \
+curl -X POST http://localhost:8080/api/screenshot \
   -H "Content-Type: application/json" \
   -d '{"url":"https://example.com","format":"png","uploadToOSS":true,"ossObjectName":"test/screenshot.png"}'
 ```
@@ -131,10 +178,10 @@ curl -X POST http://localhost:8080/screenshot \
 }
 ```
 
-## 9. 批量处理并上传到 OSS
+## 11. 批量处理并上传到 OSS
 
 ```bash
-curl -X POST http://localhost:8080/screenshot \
+curl -X POST http://localhost:8080/api/screenshot \
   -H "Content-Type: application/json" \
   -d '{"urls":["https://example.com","https://google.com"],"format":"png","uploadToOSS":true}'
 ```
@@ -208,8 +255,10 @@ curl -X POST http://localhost:8080/screenshot \
 ## 注意事项：
 
 1. 请将 `http://localhost:8080` 替换为实际的服务地址
-2. 批量处理会返回 JSON 格式的结果，包含每个项目的处理状态
-3. 单个项目处理时，如果未指定上传到 OSS，则直接返回二进制数据
-4. 如果指定上传到 OSS，则返回包含 OSS URL 的 JSON 结果
-5. 所有成功的响应都遵循统一的格式：`{"success": true, "data": {}, "message": "..."}`
-6. 所有错误响应都遵循统一的格式：`{"success": false, "error": {"code": "...", "message": "..."}}`
+2. 使用 `/api/screenshot` 路由时，所有响应都遵循统一的JSON格式
+3. 使用 `/screenshot` 路由时，二进制数据直接返回（适用于文件下载）
+4. 批量处理会返回 JSON 格式的结果，包含每个项目的处理状态
+5. 单个项目处理时，如果未指定上传到 OSS，则API路由返回base64编码的数据，传统路由返回二进制数据
+6. 如果指定上传到 OSS，则两种路由都返回包含 OSS URL 的 JSON 结果
+7. 所有成功的响应都遵循统一的格式：`{"success": true, "data": {}, "message": "..."}`
+8. 所有错误响应都遵循统一的格式：`{"success": false, "error": {"code": "...", "message": "..."}}`

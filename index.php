@@ -9,6 +9,29 @@ spl_autoload_register();
 
 use App\Controller\ScreenshotController;
 
-// 创建控制器并处理请求
-$controller = new ScreenshotController();
-$controller->handleRequest();
+// 获取请求路径
+$requestUri = $_SERVER['REQUEST_URI'] ?? '/';
+$requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
+// 路由处理
+if (strpos($requestUri, '/api/screenshot') === 0 && $requestMethod === 'POST') {
+    // API路由 - 返回JSON格式响应
+    header('Content-Type: application/json');
+    $controller = new ScreenshotController();
+    $controller->handleApiRequest();
+} else if (strpos($requestUri, '/screenshot') === 0 && $requestMethod === 'POST') {
+    // 传统路由 - 返回二进制数据
+    $controller = new ScreenshotController();
+    $controller->handleRequest();
+} else {
+    // 默认路由
+    http_response_code(404);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => false,
+        'error' => [
+            'code' => 'ROUTE_NOT_FOUND',
+            'message' => '请求的路由不存在'
+        ]
+    ]);
+}
