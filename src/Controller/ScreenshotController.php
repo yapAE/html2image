@@ -220,12 +220,24 @@ class ScreenshotController
         
         // GET请求查询任务状态
         if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-            // 获取任务ID（用于GET请求查询任务状态）
+            // 检查是否请求任务摘要（快速查询）
             $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+            $queryParams = [];
+            if (strpos($requestUri, '?') !== false) {
+                parse_str(parse_url($requestUri, PHP_URL_QUERY), $queryParams);
+            }
+            
+            $summaryOnly = isset($queryParams['summary']) && $queryParams['summary'] === 'true';
+            
+            // 获取任务ID（用于GET请求查询任务状态）
             $pathInfo = parse_url($requestUri, PHP_URL_PATH);
             if (preg_match('/\/([^\/]+)$/', $pathInfo, $matches)) {
                 $taskId = $matches[1];
-                $this->handleGetTaskStatus($taskId);
+                if ($summaryOnly) {
+                    $this->handleGetTaskSummary($taskId);
+                } else {
+                    $this->handleGetTaskStatus($taskId);
+                }
                 return;
             } else {
                 http_response_code(400);
@@ -310,6 +322,29 @@ class ScreenshotController
             echo json_encode(ApiResponse::success($taskData, '任务状态获取成功'));
         } catch (\Exception $e) {
             error_log("获取任务状态失败: " . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(ApiResponse::error('INTERNAL_ERROR', $e->getMessage()));
+        }
+    }
+    
+    /**
+     * 获取任务摘要（快速查询）
+     */
+    private function handleGetTaskSummary(string $taskId): void
+    {
+        try {
+            $taskData = $this->taskStorage->getTaskSummary($taskId);
+            
+            if (!$taskData) {
+                http_response_code(404);
+                echo json_encode(ApiResponse::error('TASK_NOT_FOUND', '任务不存在或已过期'));
+                return;
+            }
+            
+            header('Content-Type: application/json');
+            echo json_encode(ApiResponse::success($taskData, '任务摘要获取成功'));
+        } catch (\Exception $e) {
+            error_log("获取任务摘要失败: " . $e->getMessage());
             http_response_code(500);
             echo json_encode(ApiResponse::error('INTERNAL_ERROR', $e->getMessage()));
         }

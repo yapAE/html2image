@@ -54,6 +54,13 @@ class FileTaskStorage {
                 return null;
             }
             
+            // 检查文件修改时间是否过期（性能优化）
+            $fileModifiedTime = filemtime($filePath);
+            if (time() - $fileModifiedTime > 259200) { // 72小时
+                unlink($filePath);
+                return null;
+            }
+            
             // 检查是否过期
             $data = file_get_contents($filePath);
             $taskData = json_decode($data, true);
@@ -71,6 +78,73 @@ class FileTaskStorage {
             return $taskData;
         } catch (\Exception $e) {
             error_log("获取任务失败: " . $e->getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * 获取任务摘要信息（仅包含基本信息，不包含详细结果数据）
+     *
+     * @param string $taskId 任务ID
+     * @return array|null 任务摘要信息
+     */
+    public function getTaskSummary($taskId) {
+        try {
+            $filePath = $this->getTaskFilePath($taskId);
+            if (!file_exists($filePath)) {
+                return null;
+            }
+            
+            // 检查文件修改时间是否过期（性能优化）
+            $fileModifiedTime = filemtime($filePath);
+            if (time() - $fileModifiedTime > 259200) { // 72小时
+                unlink($filePath);
+                return null;
+            }
+            
+            // 读取文件并解析JSON
+            $data = file_get_contents($filePath);
+            $taskData = json_decode($data, true);
+            
+            if (!$taskData || !isset($taskData['expiresAt'])) {
+                return null;
+            }
+            
+            // 如果已过期，删除文件并返回null
+            if (time() > $taskData['expiresAt']) {
+                unlink($filePath);
+                return null;
+            }
+            
+            // 只返回摘要信息，不包含详细的结果数据
+            $summary = [
+                'taskId' => $taskData['taskId'] ?? $taskId,
+                'status' => $taskData['status'] ?? 'unknown',
+                'totalItems' => $taskData['totalItems'] ?? 0,
+                'completedItems' => $taskData['completedItems'] ?? 0,
+                'failedItems' => $taskData['failedItems'] ?? 0,
+                'createdAt' => $taskData['createdAt'] ?? null,
+                'updatedAt' => $taskData['updatedAt'] ?? null,
+                'expiresAt' => $taskData['expiresAt'] ?? null
+            ];
+            
+            // 如果任务已完成或失败，也包含summary信息
+            if (isset($taskData['summary'])) {
+                $summary['summary'] = $taskData['summary'];
+            }
+            
+            // 如果任务已完成或失败，也包含时间信息
+            if (isset($taskData['completedAt'])) {
+                $summary['completedAt'] = $taskData['completedAt'];
+            }
+            
+            if (isset($taskData['failedAt'])) {
+                $summary['failedAt'] = $taskData['failedAt'];
+            }
+            
+            return $summary;
+        } catch (\Exception $e) {
+            error_log("获取任务摘要失败: " . $e->getMessage());
             return null;
         }
     }

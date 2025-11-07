@@ -55,6 +55,7 @@ class BatchWorker {
             $errors = [];
             $completedItems = 0;
             $failedItems = 0;
+            $totalProcessed = 0; // 用于控制进度更新频率
             
             // 处理 URLs 数组
             if (isset($requestData['urls']) && is_array($requestData['urls'])) {
@@ -75,8 +76,11 @@ class BatchWorker {
                         $failedItems++;
                     }
                     
-                    // 更新进度
-                    $this->updateTaskProgress($taskId, $completedItems, $failedItems, $results, $errors);
+                    $totalProcessed++;
+                    // 每处理5个任务更新一次进度，避免过于频繁的文件I/O操作
+                    if ($totalProcessed % 5 === 0) {
+                        $this->updateTaskProgress($taskId, $completedItems, $failedItems, $results, $errors);
+                    }
                 }
             }
             
@@ -99,8 +103,11 @@ class BatchWorker {
                         $failedItems++;
                     }
                     
-                    // 更新进度
-                    $this->updateTaskProgress($taskId, $completedItems, $failedItems, $results, $errors);
+                    $totalProcessed++;
+                    // 每处理5个任务更新一次进度
+                    if ($totalProcessed % 5 === 0) {
+                        $this->updateTaskProgress($taskId, $completedItems, $failedItems, $results, $errors);
+                    }
                 }
             }
             
@@ -123,10 +130,16 @@ class BatchWorker {
                         $failedItems++;
                     }
                     
-                    // 更新进度
-                    $this->updateTaskProgress($taskId, $completedItems, $failedItems, $results, $errors);
+                    $totalProcessed++;
+                    // 每处理5个任务更新一次进度
+                    if ($totalProcessed % 5 === 0) {
+                        $this->updateTaskProgress($taskId, $completedItems, $failedItems, $results, $errors);
+                    }
                 }
             }
+            
+            // 最后一次更新进度
+            $this->updateTaskProgress($taskId, $completedItems, $failedItems, $results, $errors);
             
             // 标记任务完成
             $this->markTaskAsCompleted($taskId, $results, $errors, $completedItems, $failedItems);
@@ -147,8 +160,8 @@ class BatchWorker {
             $progressData = [
                 'completedItems' => $completedItems,
                 'failedItems' => $failedItems,
-                'results' => array_slice($results, -10), // 只保留最近10个结果
-                'errors' => array_slice($errors, -10),   // 只保留最近10个错误
+                'results' => array_slice($results, -5), // 只保留最近5个结果，减少数据量
+                'errors' => array_slice($errors, -5),   // 只保留最近5个错误
                 'updatedAt' => time()
             ];
             
