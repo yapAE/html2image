@@ -239,6 +239,230 @@ fetch('http://localhost:8080/api/screenshot', {
 });
 ```
 
+## 异步批处理使用指南
+
+对于大量URL或HTML内容的处理，建议使用异步批处理接口 `/api/batch/screenshot`，避免长时间等待。
+
+### 1. 提交异步批处理任务
+
+```javascript
+// 提交异步批处理任务
+async function submitAsyncBatchTask(data) {
+    const response = await fetch('http://localhost:8080/api/batch/screenshot', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+        return result.data.taskId;
+    } else {
+        throw new Error(result.error.message);
+    }
+}
+
+// 使用示例
+const batchData = {
+    urls: [
+        'https://example1.com',
+        'https://example2.com',
+        'https://example3.com'
+    ],
+    format: 'png',
+    windowSize: {width: 1920, height: 1080},
+    fullPage: true
+};
+
+submitAsyncBatchTask(batchData)
+    .then(taskId => {
+        console.log('批处理任务已提交，任务ID:', taskId);
+        // 开始轮询任务状态
+        pollTaskStatus(taskId);
+    })
+    .catch(error => {
+        console.error('提交批处理任务失败:', error);
+        alert('提交批处理任务失败: ' + error.message);
+    });
+```
+
+### 2. 轮询任务状态
+
+```javascript
+// 轮询任务状态
+async function pollTaskStatus(taskId) {
+    const pollInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`http://localhost:8080/api/batch/screenshot/${taskId}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                const task = result.data;
+                
+                // 更新进度显示
+                updateProgress(task.completedItems || 0, task.totalItems || 0);
+                
+                // 显示部分已完成的结果
+                if (task.results && task.results.length > 0) {
+                    displayPartialResults(task.results);
+                }
+                
+                // 任务完成时停止轮询
+                if (task.status === 'completed') {
+                    clearInterval(pollInterval);
+                    handleBatchCompletion(task);
+                } else if (task.status === 'failed') {
+                    clearInterval(pollInterval);
+                    handleBatchFailure(task);
+                }
+            } else {
+                console.error('获取任务状态失败:', result.error.message);
+                clearInterval(pollInterval);
+            }
+        } catch (error) {
+            console.error('轮询任务状态失败:', error);
+        }
+    }, 3000); // 每3秒查询一次
+}
+
+// 更新进度显示
+function updateProgress(completed, total) {
+    const progressElement = document.getElementById('progress');
+    if (progressElement) {
+        progressElement.textContent = `进度: ${completed}/${total}`;
+        if (total > 0) {
+            progressElement.style.width = `${(completed / total) * 100}%`;
+        }
+    }
+}
+
+// 显示部分已完成的结果
+function displayPartialResults(results) {
+    const container = document.getElementById('partial-results');
+    if (container) {
+        results.forEach(result => {
+            if (result.ossUrl && !document.getElementById(`result-${result.identifier}`)) {
+                const div = document.createElement('div');
+                div.id = `result-${result.identifier}`;
+                div.innerHTML = `
+                    <h4>${result.identifier}</h4>
+                    <img src="${result.ossUrl}" style="max-width: 200px;" />
+                    <a href="${result.ossUrl}" target="_blank">查看原图</a>
+                `;
+                container.appendChild(div);
+            }
+        });
+    }
+}
+
+// 处理批处理完成
+function handleBatchCompletion(task) {
+    console.log('批处理任务完成:', task);
+    alert(`批处理任务完成！成功: ${task.summary.success}, 失败: ${task.summary.failed}`);
+    
+    // 显示所有结果
+    displayFinalResults(task.results, task.errors);
+}
+
+// 处理批处理失败
+function handleBatchFailure(task) {
+    console.error('批处理任务失败:', task);
+    alert('批处理任务失败: ' + (task.errorMessage || '未知错误'));
+}
+
+// 显示最终结果
+function displayFinalResults(results, errors) {
+    const resultsContainer = document.getElementById('final-results');
+    if (resultsContainer) {
+        resultsContainer.innerHTML = '<h3>处理结果</h3>';
+        
+        results.forEach(result => {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <h4>${result.identifier}</h4>
+                ${result.ossUrl ? 
+                    `<img src="${result.ossUrl}" style="max-width: 200px;" />
+                     <a href="${result.ossUrl}" target="_blank">查看原图</a>` : 
+                    '<p>数据已生成但未上传到OSS</p>'
+                }
+            `;
+            resultsContainer.appendChild(div);
+        });
+    }
+    
+    // 显示错误信息
+    if (errors && errors.length > 0) {
+        const errorsContainer = document.getElementById('error-results');
+        if (errorsContainer) {
+            errorsContainer.innerHTML = '<h3>错误信息</h3>';
+            errors.forEach(error => {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <h4>${error.identifier || error.index}</h4>
+                    <p>错误: ${error.error}</p>
+                    <p>值: ${error.value}</p>
+                `;
+                errorsContainer.appendChild(div);
+            });
+        }
+    }
+}
+```
+
+### 3. 完整的异步批处理示例
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>异步批处理示例</title>
+</head>
+<body>
+    <h1>异步批处理示例</h1>
+    
+    <button id="startBatch">开始批处理</button>
+    
+    <div id="progress-container">
+        <div id="progress" style="width: 0%; height: 20px; background-color: #4CAF50; text-align: center; line-height: 20px; color: white;"></div>
+    </div>
+    
+    <div id="partial-results"></div>
+    <div id="final-results"></div>
+    <div id="error-results"></div>
+    
+    <script>
+        document.getElementById('startBatch').addEventListener('click', function() {
+            const batchData = {
+                urls: [
+                    'https://example.com',
+                    'https://google.com',
+                    'https://github.com'
+                ],
+                format: 'png',
+                windowSize: {width: 1920, height: 1080}
+            };
+            
+            submitAsyncBatchTask(batchData)
+                .then(taskId => {
+                    console.log('批处理任务已提交，任务ID:', taskId);
+                    pollTaskStatus(taskId);
+                })
+                .catch(error => {
+                    console.error('提交批处理任务失败:', error);
+                    alert('提交批处理任务失败: ' + error.message);
+                });
+        });
+        
+        // 这里包含上面定义的所有函数
+        // submitAsyncBatchTask, pollTaskStatus, updateProgress, 
+        // displayPartialResults, handleBatchCompletion, handleBatchFailure, displayFinalResults
+    </script>
+</body>
+</html>
+```
+
 ## 错误处理最佳实践
 
 ```javascript
@@ -295,3 +519,5 @@ fetch('http://localhost:8080/api/screenshot', {
 3. **错误处理**: 始终检查API响应的success字段
 4. **跨域问题**: 确保服务端正确设置了CORS头部
 5. **文件大小**: 大文件的base64数据可能很长，注意性能影响
+6. **异步处理**: 对于大量任务，使用异步批处理接口避免长时间等待
+7. **任务状态**: 异步任务有24小时的有效期，过期后将无法查询
