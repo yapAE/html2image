@@ -36,7 +36,8 @@ RUN mkdir -p /var/log/php && touch /var/log/php/error.log && chmod 777 /var/log/
 RUN mkdir -p /var/log/batch && touch /var/log/batch/cleanup.log && chmod 777 /var/log/batch/cleanup.log
 
 # 确保bin目录下的脚本可执行
-RUN chmod +x /app/bin/*.sh /app/bin/*.php
+RUN find /app/bin -name "*.sh" -exec chmod +x {} \; && \
+    find /app/bin -name "*.php" -exec chmod +x {} \;
 
 # 创建批处理任务存储目录
 RUN mkdir -p /tmp/batch_task_meta && chmod 777 /tmp/batch_task_meta

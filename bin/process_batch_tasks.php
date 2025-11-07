@@ -2,7 +2,7 @@
 <?php
 
 // 在容器环境中，确保正确的路径引用
-$basePath = dirname(__DIR__);
+$basePath = '/app';
 require_once $basePath . '/vendor/autoload.php';
 
 // 设置自动加载
