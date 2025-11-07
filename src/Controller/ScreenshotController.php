@@ -5,16 +5,19 @@ namespace App\Controller;
 use App\Service\ScreenshotService;
 use App\Utils\ApiResponse;
 use App\Utils\FileTaskStorage;
+use App\Utils\FileQueue;
 
 class ScreenshotController
 {
     private ScreenshotService $screenshotService;
     private FileTaskStorage $taskStorage;
+    private FileQueue $fileQueue;
     
     public function __construct()
     {
         $this->screenshotService = new ScreenshotService();
         $this->taskStorage = new FileTaskStorage();
+        $this->fileQueue = new FileQueue('/app/queue');
     }
     
     /**
@@ -213,8 +216,8 @@ class ScreenshotController
                 return;
             }
             
-            // 创建异步任务
-            $this->createAsyncBatchTask($data);
+            // 创建异步任务（使用新的队列系统）
+            $this->createAsyncBatchTaskWithQueue($data);
             return;
         }
         
@@ -252,7 +255,35 @@ class ScreenshotController
     }
     
     /**
-     * 创建异步批处理任务
+     * 创建异步批处理任务（使用队列系统）
+     */
+    private function createAsyncBatchTaskWithQueue(array $data): void
+    {
+        try {
+            // 添加任务到队列
+            $taskData = [
+                'data' => $data,
+                'created_at' => date('c')
+            ];
+            
+            $taskId = $this->fileQueue->push($taskData);
+            
+            // 返回任务ID
+            header('Content-Type: application/json');
+            echo json_encode(ApiResponse::success([
+                'taskId' => $taskId,
+                'status' => 'pending',
+                'message' => '批处理任务已提交到队列'
+            ], '任务已提交，等待处理'));
+        } catch (\Exception $e) {
+            error_log("创建异步任务失败: " . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(ApiResponse::error('INTERNAL_ERROR', $e->getMessage()));
+        }
+    }
+    
+    /**
+     * 创建异步批处理任务（旧方法，保留兼容性）
      */
     private function createAsyncBatchTask(array $data): void
     {

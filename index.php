@@ -17,7 +17,11 @@ $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $pathInfo = parse_url($requestUri, PHP_URL_PATH);
 
 // 路由处理
-if (strpos($pathInfo, '/api/batch/screenshot') === 0 && ($requestMethod === 'POST' || $requestMethod === 'GET')) {
+if (strpos($pathInfo, '/api/queue/stats') === 0 && $requestMethod === 'GET') {
+    // 队列状态统计API
+    header('Content-Type: application/json');
+    require_once 'bin/queue_stats.php';
+} else if (strpos($pathInfo, '/api/batch/screenshot') === 0 && ($requestMethod === 'POST' || $requestMethod === 'GET')) {
     // 异步批处理路由
     header('Content-Type: application/json');
     $controller = new ScreenshotController();

@@ -2,11 +2,12 @@
 
 ## API 路由说明
 
-本服务提供三种路由方式来满足不同需求：
+本服务提供多种路由方式来满足不同需求：
 
 1. `/screenshot` - 传统路由，直接返回二进制数据（适用于文件下载）
 2. `/api/screenshot` - API路由，返回统一的JSON格式响应（适用于API调用）
 3. `/api/batch/screenshot` - 异步批处理路由，支持大量任务的异步处理
+4. `/api/queue/stats` - 队列状态统计API
 
 ## API 响应格式说明
 
@@ -230,10 +231,9 @@ curl -X POST http://localhost:8080/api/batch/screenshot \
 {
   "success": true,
   "data": {
-    "taskId": "batch_6543210abc",
+    "taskId": "task_6543210abc123456",
     "status": "pending",
-    "totalItems": 3,
-    "message": "批处理任务已提交"
+    "message": "批处理任务已提交到队列"
   }
 }
 ```
@@ -241,7 +241,7 @@ curl -X POST http://localhost:8080/api/batch/screenshot \
 ## 13. 查询异步批处理任务状态
 
 ```bash
-curl -X GET http://localhost:8080/api/batch/screenshot/batch_6543210abc
+curl -X GET http://localhost:8080/api/batch/screenshot/task_6543210abc123456
 ```
 
 处理中响应示例：
@@ -249,7 +249,7 @@ curl -X GET http://localhost:8080/api/batch/screenshot/batch_6543210abc
 {
   "success": true,
   "data": {
-    "taskId": "batch_6543210abc",
+    "taskId": "task_6543210abc123456",
     "status": "processing",
     "totalItems": 3,
     "completedItems": 1,
@@ -272,7 +272,7 @@ curl -X GET http://localhost:8080/api/batch/screenshot/batch_6543210abc
 {
   "success": true,
   "data": {
-    "taskId": "batch_6543210abc",
+    "taskId": "task_6543210abc123456",
     "status": "completed",
     "totalItems": 3,
     "completedItems": 3,
@@ -302,6 +302,26 @@ curl -X GET http://localhost:8080/api/batch/screenshot/batch_6543210abc
     }
   },
   "message": "任务状态获取成功"
+}
+```
+
+## 14. 查询队列状态统计
+
+```bash
+curl -X GET http://localhost:8080/api/queue/stats
+```
+
+响应示例：
+```json
+{
+  "success": true,
+  "data": {
+    "pending": 3,
+    "processing": 1,
+    "done": 7,
+    "failed": 1
+  },
+  "message": "队列状态统计获取成功"
 }
 ```
 
@@ -353,5 +373,5 @@ curl -X GET http://localhost:8080/api/batch/screenshot/batch_6543210abc
 6. 如果指定上传到 OSS，则两种路由都返回包含 OSS URL 的 JSON 结果
 7. 所有成功的响应都遵循统一的格式：`{"success": true, "data": {}, "message": "..."}`
 8. 所有错误响应都遵循统一的格式：`{"success": false, "error": {"code": "...", "message": "..."}}`
-9. 异步批处理任务默认保存24小时，最长不超过72小时
-10. 在容器环境中，任务数据存储在 `/tmp/batch_task_meta` 目录中
+9. 异步批处理任务使用文件系统队列管理，支持并发处理
+10. 队列系统包含pending、processing、done、failed四种状态，确保任务处理的可靠性
