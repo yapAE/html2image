@@ -194,14 +194,6 @@ class ScreenshotController
 
         error_log("=== Browsershot Async Batch Request Started ===");
         
-        // 获取任务ID（用于GET请求查询任务状态）
-        $pathInfo = $_SERVER['PATH_INFO'] ?? '';
-        if (preg_match('/\/([^\/]+)$/', $pathInfo, $matches)) {
-            $taskId = $matches[1];
-            $this->handleGetTaskStatus($taskId);
-            return;
-        }
-        
         // POST请求提交新任务
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $input = file_get_contents('php://input');
@@ -224,6 +216,22 @@ class ScreenshotController
             // 创建异步任务
             $this->createAsyncBatchTask($data);
             return;
+        }
+        
+        // GET请求查询任务状态
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+            // 获取任务ID（用于GET请求查询任务状态）
+            $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+            $pathInfo = parse_url($requestUri, PHP_URL_PATH);
+            if (preg_match('/\/([^\/]+)$/', $pathInfo, $matches)) {
+                $taskId = $matches[1];
+                $this->handleGetTaskStatus($taskId);
+                return;
+            } else {
+                http_response_code(400);
+                echo json_encode(ApiResponse::error('MISSING_TASK_ID', '必须提供任务ID'));
+                return;
+            }
         }
         
         // 不支持的请求方法
@@ -273,9 +281,6 @@ class ScreenshotController
                     'totalItems' => $totalItems,
                     'message' => '批处理任务已提交'
                 ], '任务已提交，等待处理'));
-                
-                // TODO: 启动异步处理Worker（这里可以使用队列系统或其他异步机制）
-                // $this->startAsyncWorker($taskId);
             } else {
                 http_response_code(500);
                 echo json_encode(ApiResponse::error('INTERNAL_ERROR', '无法创建任务'));
