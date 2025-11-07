@@ -19,7 +19,7 @@ chmod 777 /var/log/batch/cleanup.log
 
 # 设置定时任务
 echo "设置定时清理任务..."
-echo "0 * * * * /usr/bin/php /app/bin/cleanup_expired_tasks.php >> /var/log/batch/cleanup.log 2>&1" | crontab -
+echo "0 * * * * /usr/local/bin/php /app/bin/cleanup_expired_tasks.php >> /var/log/batch/cleanup.log 2>&1" | crontab -
 # 启动cron服务
 cron
 echo "定时任务服务已启动"
