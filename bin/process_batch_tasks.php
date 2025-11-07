@@ -22,8 +22,22 @@ if ($taskId) {
     echo "处理指定任务: $taskId\n";
     BatchWorker::runWorker($taskId);
 } else {
-    echo "处理所有待处理任务\n";
-    BatchWorker::runWorker();
+    echo "启动持续任务处理模式\n";
+    // 持续处理任务模式
+    while (true) {
+        try {
+            // 处理所有待处理任务
+            BatchWorker::runWorker();
+            
+            // 等待一段时间再检查新任务
+            echo "等待5秒后检查新任务...\n";
+            sleep(5);
+        } catch (Exception $e) {
+            echo "处理任务时发生错误: " . $e->getMessage() . "\n";
+            // 等待一段时间再重试
+            sleep(10);
+        }
+    }
 }
 
 echo "Worker执行完成\n";
