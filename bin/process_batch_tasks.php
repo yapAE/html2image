@@ -1,10 +1,12 @@
 #!/usr/bin/env php
 <?php
 
-require_once __DIR__ . '/../vendor/autoload.php';
+// 在容器环境中，确保正确的路径引用
+$basePath = dirname(__DIR__);
+require_once $basePath . '/vendor/autoload.php';
 
 // 设置自动加载
-set_include_path(get_include_path() . PATH_SEPARATOR . __DIR__ . '/..');
+set_include_path(get_include_path() . PATH_SEPARATOR . $basePath);
 spl_autoload_extensions('.php');
 spl_autoload_register();
 

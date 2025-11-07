@@ -173,7 +173,9 @@ s deploy
 - 双路由模式支持：
   - `/screenshot` - 传统路由，直接返回二进制数据（适用于文件下载）
   - `/api/screenshot` - API路由，返回统一的JSON格式响应（适用于API调用）
+  - `/api/batch/screenshot` - 异步批处理路由，支持大量任务的异步处理
 - 统一的API响应格式，便于前端处理
+- 轻量级文件系统任务存储（适用于容器环境）
 
 ## 环境要求
 
@@ -187,19 +189,43 @@ s deploy
 2. 安装依赖：`composer install`
 3. 启动服务：`php -S localhost:8080`
 
+## Docker部署
+
+### 构建镜像
+```bash
+docker build -t html2image .
+```
+
+### 运行容器
+```bash
+docker run -d -p 8080:8080 \
+  -e OSS_ACCESS_KEY_ID=your_key \
+  -e OSS_ACCESS_KEY_SECRET=your_secret \
+  -e OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com \
+  -e OSS_BUCKET=your_bucket \
+  html2image
+```
+
+### 容器环境说明
+容器内包含以下组件：
+- 主应用服务（监听8080端口）
+- 定时清理任务（每小时自动清理过期任务）
+- 批处理Worker（可通过[/app/bin/start_worker.sh](file:///Users/solo/Documents/projects/b-gg/html2image/bin/start_worker.sh)手动启动）
+
 ## API接口
 
 ### 路由说明
 
-本服务提供两种路由方式来满足不同需求：
+本服务提供三种路由方式来满足不同需求：
 
 1. `/screenshot` - 传统路由，直接返回二进制数据（适用于文件下载）
 2. `/api/screenshot` - API路由，返回统一的JSON格式响应（适用于API调用）
+3. `/api/batch/screenshot` - 异步批处理路由，支持大量任务的异步处理
 
 ### 统一响应格式
 
 #### 成功响应
-```
+```json
 {
   "success": true,
   "data": {},
@@ -208,7 +234,7 @@ s deploy
 ```
 
 #### 错误响应
-```
+```json
 {
   "success": false,
   "error": {
@@ -231,8 +257,14 @@ s deploy
 │   ├── Controller/           # 控制器层
 │   ├── Service/              # 服务层
 │   └── Utils/                # 工具类
+├── bin/                     # 可执行脚本
+│   ├── process_batch_tasks.php  # 批处理任务Worker
+│   ├── cleanup_expired_tasks.php # 清理过期任务
+│   ├── start_workers.sh      # 容器启动脚本
+│   └── start_worker.sh       # 独立Worker启动脚本
 ├── examples.md              # 使用示例
 ├── index.php                # 入口文件
+├── Dockerfile               # Docker配置
 └── composer.json            # 依赖配置
 ```
 
@@ -279,6 +311,15 @@ docker run -e OSS_ACCESS_KEY_ID=your_access_key_id \
 ```bash
 export PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ```
+
+## 异步批处理
+
+对于大量任务的处理，建议使用异步批处理接口：
+
+1. 提交任务：`POST /api/batch/screenshot`
+2. 查询状态：`GET /api/batch/screenshot/{taskId}`
+
+任务存储在容器的 `/tmp/batch_task_meta` 目录中，有效期为24小时。
 
 ## 错误处理
 

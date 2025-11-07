@@ -2,10 +2,11 @@
 
 ## API 路由说明
 
-本服务提供两种路由方式来满足不同需求：
+本服务提供三种路由方式来满足不同需求：
 
 1. `/screenshot` - 传统路由，直接返回二进制数据（适用于文件下载）
 2. `/api/screenshot` - API路由，返回统一的JSON格式响应（适用于API调用）
+3. `/api/batch/screenshot` - 异步批处理路由，支持大量任务的异步处理
 
 ## API 响应格式说明
 
@@ -214,6 +215,96 @@ curl -X POST http://localhost:8080/api/screenshot \
 }
 ```
 
+## 12. 异步批处理任务提交
+
+对于大量任务，建议使用异步处理方式：
+
+```bash
+curl -X POST http://localhost:8080/api/batch/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"urls":["https://example.com","https://google.com","https://github.com"],"format":"png","windowSize":{"width":1920,"height":1080}}'
+```
+
+成功响应示例：
+```json
+{
+  "success": true,
+  "data": {
+    "taskId": "batch_6543210abc",
+    "status": "pending",
+    "totalItems": 3,
+    "message": "批处理任务已提交"
+  }
+}
+```
+
+## 13. 查询异步批处理任务状态
+
+```bash
+curl -X GET http://localhost:8080/api/batch/screenshot/batch_6543210abc
+```
+
+处理中响应示例：
+```json
+{
+  "success": true,
+  "data": {
+    "taskId": "batch_6543210abc",
+    "status": "processing",
+    "totalItems": 3,
+    "completedItems": 1,
+    "failedItems": 0,
+    "results": [
+      {
+        "identifier": "url_0",
+        "type": "png",
+        "ossUrl": "https://your-bucket.oss-region.aliyuncs.com/screenshots/2023/12/01/id1.png"
+      }
+    ],
+    "errors": []
+  },
+  "message": "任务状态获取成功"
+}
+```
+
+完成响应示例：
+```json
+{
+  "success": true,
+  "data": {
+    "taskId": "batch_6543210abc",
+    "status": "completed",
+    "totalItems": 3,
+    "completedItems": 3,
+    "failedItems": 0,
+    "results": [
+      {
+        "identifier": "url_0",
+        "type": "png",
+        "ossUrl": "https://your-bucket.oss-region.aliyuncs.com/screenshots/2023/12/01/id1.png"
+      },
+      {
+        "identifier": "url_1",
+        "type": "png",
+        "ossUrl": "https://your-bucket.oss-region.aliyuncs.com/screenshots/2023/12/01/id2.png"
+      },
+      {
+        "identifier": "url_2",
+        "type": "png",
+        "ossUrl": "https://your-bucket.oss-region.aliyuncs.com/screenshots/2023/12/01/id3.png"
+      }
+    ],
+    "errors": [],
+    "summary": {
+      "total": 3,
+      "success": 3,
+      "failed": 0
+    }
+  },
+  "message": "任务状态获取成功"
+}
+```
+
 ## 错误响应示例
 
 参数错误：
@@ -262,3 +353,5 @@ curl -X POST http://localhost:8080/api/screenshot \
 6. 如果指定上传到 OSS，则两种路由都返回包含 OSS URL 的 JSON 结果
 7. 所有成功的响应都遵循统一的格式：`{"success": true, "data": {}, "message": "..."}`
 8. 所有错误响应都遵循统一的格式：`{"success": false, "error": {"code": "...", "message": "..."}}`
+9. 异步批处理任务默认保存24小时，最长不超过72小时
+10. 在容器环境中，任务数据存储在 `/tmp/batch_task_meta` 目录中
