@@ -16,12 +16,14 @@ spl_autoload_register();
 use App\Utils\FileQueue;
 use App\Service\ScreenshotService;
 use App\Utils\ApiResponse;
+use App\Utils\FileTaskStorage;
 
 echo "启动队列处理守护进程...\n";
 
 // 初始化队列和截图服务
 $queue = new FileQueue('/app/queue');
 $screenshotService = new ScreenshotService();
+$taskStorage = new FileTaskStorage();
 
 // 持续处理任务
 while (true) {
@@ -40,6 +42,33 @@ while (true) {
                     throw new Exception('任务数据为空');
                 }
                 
+                // 创建任务存储记录
+                $taskId = $task['id'];
+                $totalItems = 0;
+                if (isset($requestData['urls']) && is_array($requestData['urls'])) {
+                    $totalItems += count($requestData['urls']);
+                }
+                if (isset($requestData['htmls']) && is_array($requestData['htmls'])) {
+                    $totalItems += count($requestData['htmls']);
+                }
+                if (isset($requestData['items']) && is_array($requestData['items'])) {
+                    $totalItems += count($requestData['items']);
+                }
+                
+                // 创建任务元数据
+                $taskMetadata = [
+                    'status' => 'processing',
+                    'totalItems' => $totalItems,
+                    'completedItems' => 0,
+                    'failedItems' => 0,
+                    'results' => [],
+                    'errors' => [],
+                    'requestData' => $requestData
+                ];
+                
+                // 保存任务到旧的存储系统，以便API可以查询
+                $taskStorage->saveTask($taskId, $taskMetadata);
+                
                 // 处理请求数据
                 $results = [];
                 $errors = [];
@@ -55,6 +84,15 @@ while (true) {
                             $result['identifier'] = "url_$index";
                             $results[] = $result;
                             $completedItems++;
+                            
+                            // 更新进度
+                            $progressData = [
+                                'completedItems' => $completedItems,
+                                'failedItems' => $failedItems,
+                                'results' => $results,
+                                'errors' => $errors
+                            ];
+                            $taskStorage->updateTask($taskId, $progressData);
                         } catch (\Exception $e) {
                             $errors[] = [
                                 'index' => $index,
@@ -63,6 +101,15 @@ while (true) {
                                 'error' => $e->getMessage()
                             ];
                             $failedItems++;
+                            
+                            // 更新进度
+                            $progressData = [
+                                'completedItems' => $completedItems,
+                                'failedItems' => $failedItems,
+                                'results' => $results,
+                                'errors' => $errors
+                            ];
+                            $taskStorage->updateTask($taskId, $progressData);
                         }
                     }
                 }
@@ -76,6 +123,15 @@ while (true) {
                             $result['identifier'] = "html_$index";
                             $results[] = $result;
                             $completedItems++;
+                            
+                            // 更新进度
+                            $progressData = [
+                                'completedItems' => $completedItems,
+                                'failedItems' => $failedItems,
+                                'results' => $results,
+                                'errors' => $errors
+                            ];
+                            $taskStorage->updateTask($taskId, $progressData);
                         } catch (\Exception $e) {
                             $errors[] = [
                                 'index' => $index,
@@ -84,6 +140,15 @@ while (true) {
                                 'error' => $e->getMessage()
                             ];
                             $failedItems++;
+                            
+                            // 更新进度
+                            $progressData = [
+                                'completedItems' => $completedItems,
+                                'failedItems' => $failedItems,
+                                'results' => $results,
+                                'errors' => $errors
+                            ];
+                            $taskStorage->updateTask($taskId, $progressData);
                         }
                     }
                 }
@@ -97,6 +162,15 @@ while (true) {
                             $result['identifier'] = "item_$index";
                             $results[] = $result;
                             $completedItems++;
+                            
+                            // 更新进度
+                            $progressData = [
+                                'completedItems' => $completedItems,
+                                'failedItems' => $failedItems,
+                                'results' => $results,
+                                'errors' => $errors
+                            ];
+                            $taskStorage->updateTask($taskId, $progressData);
                         } catch (\Exception $e) {
                             $errors[] = [
                                 'index' => $index,
@@ -105,6 +179,15 @@ while (true) {
                                 'error' => $e->getMessage()
                             ];
                             $failedItems++;
+                            
+                            // 更新进度
+                            $progressData = [
+                                'completedItems' => $completedItems,
+                                'failedItems' => $failedItems,
+                                'results' => $results,
+                                'errors' => $errors
+                            ];
+                            $taskStorage->updateTask($taskId, $progressData);
                         }
                     }
                 }
@@ -120,13 +203,38 @@ while (true) {
                     'failed' => $failedItems
                 ];
                 
-                // 标记任务完成
+                // 标记任务完成（在队列系统中）
                 $queue->done($task['id'], $task);
+                
+                // 更新任务状态（在旧的存储系统中）
+                $finalData = [
+                    'status' => 'completed',
+                    'completedItems' => $completedItems,
+                    'failedItems' => $failedItems,
+                    'results' => $results,
+                    'errors' => $errors,
+                    'summary' => [
+                        'total' => $completedItems + $failedItems,
+                        'success' => $completedItems,
+                        'failed' => $failedItems
+                    ],
+                    'completedAt' => time()
+                ];
+                $taskStorage->updateTask($taskId, $finalData);
+                
                 echo "任务 {$task['id']} 处理完成\n";
                 
             } catch (\Exception $e) {
                 echo "任务 {$task['id']} 处理失败: " . $e->getMessage() . "\n";
                 $queue->fail($task['id'], $e->getMessage());
+                
+                // 更新任务状态为失败（在旧的存储系统中）
+                $failData = [
+                    'status' => 'failed',
+                    'failedAt' => time(),
+                    'errorMessage' => $e->getMessage()
+                ];
+                $taskStorage->updateTask($taskId, $failData);
             }
         } else {
             // 没有待处理任务，短暂休眠

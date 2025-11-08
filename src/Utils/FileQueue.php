@@ -106,7 +106,12 @@ class FileQueue
         $info['finished_at'] = date('c');
 
         rename($src, $dst);
-        file_put_contents($dst, json_encode($info, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        // 确保写入数据，即使$data为null也要写入基本信息
+        $content = json_encode($info, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        if ($content === false) {
+            $content = json_encode(['id' => $id, 'status' => 'done', 'finished_at' => date('c')], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        }
+        file_put_contents($dst, $content);
         error_log("Queue: Task {$id} completed");
     }
 
