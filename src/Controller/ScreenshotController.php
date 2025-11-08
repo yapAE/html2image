@@ -4,19 +4,16 @@ namespace App\Controller;
 
 use App\Service\ScreenshotService;
 use App\Utils\ApiResponse;
-use App\Utils\FileTaskStorage;
 use App\Utils\FileQueue;
 
 class ScreenshotController
 {
     private ScreenshotService $screenshotService;
-    private FileTaskStorage $taskStorage;
     private FileQueue $fileQueue;
     
     public function __construct()
     {
         $this->screenshotService = new ScreenshotService();
-        $this->taskStorage = new FileTaskStorage();
         $this->fileQueue = new FileQueue('/app/queue');
     }
     
@@ -283,65 +280,27 @@ class ScreenshotController
     }
     
     /**
-     * 创建异步批处理任务（旧方法，保留兼容性）
-     */
-    private function createAsyncBatchTask(array $data): void
-    {
-        try {
-            // 生成任务ID
-            $taskId = 'batch_' . uniqid();
-            
-            // 计算总任务数
-            $totalItems = 0;
-            if (isset($data['urls']) && is_array($data['urls'])) {
-                $totalItems += count($data['urls']);
-            }
-            if (isset($data['htmls']) && is_array($data['htmls'])) {
-                $totalItems += count($data['htmls']);
-            }
-            if (isset($data['items']) && is_array($data['items'])) {
-                $totalItems += count($data['items']);
-            }
-            
-            // 创建任务元数据
-            $taskMetadata = [
-                'status' => 'pending',
-                'totalItems' => $totalItems,
-                'completedItems' => 0,
-                'failedItems' => 0,
-                'results' => [],
-                'errors' => [],
-                'requestData' => $data
-            ];
-            
-            // 保存任务
-            if ($this->taskStorage->saveTask($taskId, $taskMetadata)) {
-                // 返回任务ID
-                header('Content-Type: application/json');
-                echo json_encode(ApiResponse::success([
-                    'taskId' => $taskId,
-                    'status' => 'pending',
-                    'totalItems' => $totalItems,
-                    'message' => '批处理任务已提交'
-                ], '任务已提交，等待处理'));
-            } else {
-                http_response_code(500);
-                echo json_encode(ApiResponse::error('INTERNAL_ERROR', '无法创建任务'));
-            }
-        } catch (\Exception $e) {
-            error_log("创建异步任务失败: " . $e->getMessage());
-            http_response_code(500);
-            echo json_encode(ApiResponse::error('INTERNAL_ERROR', $e->getMessage()));
-        }
-    }
-    
-    /**
-     * 获取任务状态
+     * 获取任务状态（直接从队列系统查询）
      */
     private function handleGetTaskStatus(string $taskId): void
     {
         try {
-            $taskData = $this->taskStorage->getTask($taskId);
+            // 按优先级顺序检查任务在各个状态目录中的存在情况
+            $directories = ['done', 'failed', 'processing', 'pending'];
+            $taskData = null;
+            
+            foreach ($directories as $dir) {
+                $filePath = "/app/queue/{$dir}/{$taskId}.json";
+                if (file_exists($filePath)) {
+                    $content = file_get_contents($filePath);
+                    $taskData = json_decode($content, true);
+                    if ($taskData) {
+                        // 添加状态字段
+                        $taskData['status'] = $dir;
+                        break;
+                    }
+                }
+            }
             
             if (!$taskData) {
                 http_response_code(404);
@@ -359,12 +318,27 @@ class ScreenshotController
     }
     
     /**
-     * 获取任务摘要（快速查询）
+     * 获取任务摘要（快速查询，直接从队列系统查询）
      */
     private function handleGetTaskSummary(string $taskId): void
     {
         try {
-            $taskData = $this->taskStorage->getTaskSummary($taskId);
+            // 按优先级顺序检查任务在各个状态目录中的存在情况
+            $directories = ['done', 'failed', 'processing', 'pending'];
+            $taskData = null;
+            
+            foreach ($directories as $dir) {
+                $filePath = "/app/queue/{$dir}/{$taskId}.json";
+                if (file_exists($filePath)) {
+                    $content = file_get_contents($filePath);
+                    $taskData = json_decode($content, true);
+                    if ($taskData) {
+                        // 添加状态字段
+                        $taskData['status'] = $dir;
+                        break;
+                    }
+                }
+            }
             
             if (!$taskData) {
                 http_response_code(404);
@@ -372,8 +346,30 @@ class ScreenshotController
                 return;
             }
             
+            // 只返回摘要信息，不包含详细的结果数据
+            $summary = [
+                'taskId' => $taskData['id'] ?? $taskId,
+                'status' => $taskData['status'] ?? 'unknown',
+                'createdAt' => $taskData['created_at'] ?? null,
+                'startedAt' => $taskData['started_at'] ?? null,
+                'finishedAt' => $taskData['finished_at'] ?? null,
+                'failedAt' => $taskData['failed_at'] ?? null,
+                'error' => $taskData['error'] ?? null
+            ];
+            
+            // 如果有处理统计信息，也包含在摘要中
+            if (isset($taskData['completedItems'])) {
+                $summary['completedItems'] = $taskData['completedItems'];
+            }
+            if (isset($taskData['failedItems'])) {
+                $summary['failedItems'] = $taskData['failedItems'];
+            }
+            if (isset($taskData['totalItems'])) {
+                $summary['totalItems'] = $taskData['totalItems'];
+            }
+            
             header('Content-Type: application/json');
-            echo json_encode(ApiResponse::success($taskData, '任务摘要获取成功'));
+            echo json_encode(ApiResponse::success($summary, '任务摘要获取成功'));
         } catch (\Exception $e) {
             error_log("获取任务摘要失败: " . $e->getMessage());
             http_response_code(500);

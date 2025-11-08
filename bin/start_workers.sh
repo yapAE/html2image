@@ -27,7 +27,7 @@ chmod 777 /var/log/batch/cleanup.log
 
 # 设置定时任务
 echo "设置定时清理任务..."
-echo "0 * * * * /usr/bin/php /app/bin/cleanup_expired_tasks.php >> /var/log/batch/cleanup.log 2>&1" | crontab -
+# 移除对已删除脚本的引用
 echo "*/30 * * * * /usr/bin/php /app/bin/check_timeout_tasks.php >> /var/log/batch/timeout_check.log 2>&1" | crontab -
 # 启动cron服务
 cron

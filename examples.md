@@ -249,9 +249,18 @@ curl -X GET http://localhost:8080/api/batch/screenshot/task_6543210abc123456
 {
   "success": true,
   "data": {
-    "taskId": "task_6543210abc123456",
+    "id": "task_6543210abc123456",
     "status": "processing",
-    "totalItems": 3,
+    "created_at": "2023-12-01T10:00:00+08:00",
+    "started_at": "2023-12-01T10:00:05+08:00",
+    "data": {
+      "urls": ["https://example.com", "https://google.com", "https://github.com"],
+      "format": "png",
+      "windowSize": {
+        "width": 1920,
+        "height": 1080
+      }
+    },
     "completedItems": 1,
     "failedItems": 0,
     "results": [
@@ -272,11 +281,19 @@ curl -X GET http://localhost:8080/api/batch/screenshot/task_6543210abc123456
 {
   "success": true,
   "data": {
-    "taskId": "task_6543210abc123456",
-    "status": "completed",
-    "totalItems": 3,
-    "completedItems": 3,
-    "failedItems": 0,
+    "id": "task_6543210abc123456",
+    "status": "done",
+    "created_at": "2023-12-01T10:00:00+08:00",
+    "started_at": "2023-12-01T10:00:05+08:00",
+    "finished_at": "2023-12-01T10:00:30+08:00",
+    "data": {
+      "urls": ["https://example.com", "https://google.com", "https://github.com"],
+      "format": "png",
+      "windowSize": {
+        "width": 1920,
+        "height": 1080
+      }
+    },
     "results": [
       {
         "identifier": "url_0",
@@ -305,7 +322,31 @@ curl -X GET http://localhost:8080/api/batch/screenshot/task_6543210abc123456
 }
 ```
 
-## 14. 查询队列状态统计
+## 14. 查询任务摘要（快速查询）
+
+```bash
+curl -X GET "http://localhost:8080/api/batch/screenshot/task_6543210abc123456?summary=true"
+```
+
+响应示例：
+```json
+{
+  "success": true,
+  "data": {
+    "taskId": "task_6543210abc123456",
+    "status": "done",
+    "createdAt": "2023-12-01T10:00:00+08:00",
+    "startedAt": "2023-12-01T10:00:05+08:00",
+    "finishedAt": "2023-12-01T10:00:30+08:00",
+    "completedItems": 3,
+    "failedItems": 0,
+    "totalItems": 3
+  },
+  "message": "任务摘要获取成功"
+}
+```
+
+## 15. 查询队列状态统计
 
 ```bash
 curl -X GET http://localhost:8080/api/queue/stats
@@ -375,3 +416,4 @@ curl -X GET http://localhost:8080/api/queue/stats
 8. 所有错误响应都遵循统一的格式：`{"success": false, "error": {"code": "...", "message": "..."}}`
 9. 异步批处理任务使用文件系统队列管理，支持并发处理
 10. 队列系统包含pending、processing、done、failed四种状态，确保任务处理的可靠性
+11. 任务结果直接存储在队列系统的done目录中，查询时直接返回对应的JSON文件内容
