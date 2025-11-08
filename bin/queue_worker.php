@@ -55,19 +55,28 @@ while (true) {
                     $totalItems += count($requestData['items']);
                 }
                 
-                // 创建任务元数据
-                $taskMetadata = [
-                    'status' => 'processing',
-                    'totalItems' => $totalItems,
-                    'completedItems' => 0,
-                    'failedItems' => 0,
-                    'results' => [],
-                    'errors' => [],
-                    'requestData' => $requestData
-                ];
-                
-                // 保存任务到旧的存储系统，以便API可以查询
-                $taskStorage->saveTask($taskId, $taskMetadata);
+                // 检查任务是否已存在，如果不存在则创建
+                $existingTask = $taskStorage->getTask($taskId);
+                if (!$existingTask) {
+                    // 创建任务元数据
+                    $taskMetadata = [
+                        'status' => 'processing',
+                        'totalItems' => $totalItems,
+                        'completedItems' => 0,
+                        'failedItems' => 0,
+                        'results' => [],
+                        'errors' => [],
+                        'requestData' => $requestData
+                    ];
+                    
+                    // 保存任务到旧的存储系统，以便API可以查询
+                    $taskStorage->saveTask($taskId, $taskMetadata);
+                    echo "创建新任务记录: $taskId\n";
+                } else {
+                    // 更新任务状态为处理中
+                    $taskStorage->updateTask($taskId, ['status' => 'processing']);
+                    echo "更新现有任务记录: $taskId\n";
+                }
                 
                 // 处理请求数据
                 $results = [];
