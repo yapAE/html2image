@@ -28,10 +28,14 @@ chmod 777 /var/log/batch/cleanup.log
 # 设置定时任务
 echo "设置定时清理任务..."
 echo "0 * * * * /usr/bin/php /app/bin/cleanup_expired_tasks.php >> /var/log/batch/cleanup.log 2>&1" | crontab -
-echo "*/30 * * * * /usr/local/bin/php /app/bin/check_timeout_tasks.php >> /var/log/batch/timeout_check.log 2>&1" | crontab -
+echo "*/30 * * * * /usr/bin/php /app/bin/check_timeout_tasks.php >> /var/log/batch/timeout_check.log 2>&1" | crontab -
 # 启动cron服务
 cron
 echo "定时任务服务已启动"
+
+# 启动队列处理守护进程
+echo "启动队列处理守护进程..."
+php /app/bin/queue_worker.php &
 
 echo "启动主应用服务..."
 exec php -S 0.0.0.0:8080 -d error_log=/var/log/php/error.log
