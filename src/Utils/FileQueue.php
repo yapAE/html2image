@@ -22,6 +22,14 @@ class FileQueue
     }
 
     /**
+     * 获取基础目录路径
+     */
+    public function getBaseDir(): string
+    {
+        return $this->baseDir;
+    }
+    
+    /**
      * 初始化目录结构
      */
     private function initDirectories(): void
@@ -29,7 +37,7 @@ class FileQueue
         foreach (['pending', 'processing', 'done', 'failed'] as $dir) {
             $path = "{$this->baseDir}/{$dir}";
             if (!is_dir($path)) {
-                mkdir($path, 0777, true);
+                @mkdir($path, 0777, true);
             }
         }
     }

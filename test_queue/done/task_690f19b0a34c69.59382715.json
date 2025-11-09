@@ -1,0 +1,21 @@
+{
+    "id": "task_690f19b0a34c69.59382715",
+    "status": "done",
+    "created_at": "2023-12-01T10:00:00+08:00",
+    "started_at": "2023-12-01T10:00:05+08:00",
+    "finished_at": "2023-12-01T10:00:30+08:00",
+    "data": {
+        "urls": [
+            "https:\/\/example.com"
+        ],
+        "format": "png"
+    },
+    "results": [
+        {
+            "identifier": "url_0",
+            "type": "png",
+            "ossUrl": "https:\/\/your-bucket.oss-region.aliyuncs.com\/screenshots\/2023\/12\/01\/id1.png"
+        }
+    ],
+    "errors": []
+}

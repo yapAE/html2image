@@ -1,6 +1,6 @@
 {
   "require": {
-    "spatie/browsershot": "^4.0",
+    "spatie/browsershot": "^3.0",
     "aliyuncs/oss-sdk-php": "^2.0"
   },
   "autoload": {

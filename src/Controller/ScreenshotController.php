@@ -14,7 +14,9 @@ class ScreenshotController
     public function __construct()
     {
         $this->screenshotService = new ScreenshotService();
-        $this->fileQueue = new FileQueue('/app/queue');
+        // 检查环境变量或使用默认队列目录
+        $queueDir = getenv('QUEUE_DIR') ?: '/app/queue';
+        $this->fileQueue = new FileQueue($queueDir);
     }
     
     /**
@@ -285,12 +287,30 @@ class ScreenshotController
     private function handleGetTaskStatus(string $taskId): void
     {
         try {
-            // 按优先级顺序检查任务在各个状态目录中的存在情况
+            // 检查队列目录是否存在
+            $baseDir = $this->fileQueue->getBaseDir();
+            if (!is_dir($baseDir)) {
+                http_response_code(500);
+                echo json_encode(ApiResponse::error('QUEUE_DIR_NOT_FOUND', '队列目录不存在: ' . $baseDir));
+                return;
+            }
+            
+            // 检查各个子目录是否存在
             $directories = ['done', 'failed', 'processing', 'pending'];
+            foreach ($directories as $dir) {
+                $dirPath = "{$baseDir}/{$dir}";
+                if (!is_dir($dirPath)) {
+                    http_response_code(500);
+                    echo json_encode(ApiResponse::error('QUEUE_SUBDIR_NOT_FOUND', '队列子目录不存在: ' . $dirPath));
+                    return;
+                }
+            }
+            
+            // 按优先级顺序检查任务在各个状态目录中的存在情况
             $taskData = null;
             
             foreach ($directories as $dir) {
-                $filePath = "/app/queue/{$dir}/{$taskId}.json";
+                $filePath = "{$baseDir}/{$dir}/{$taskId}.json";
                 if (file_exists($filePath)) {
                     $content = file_get_contents($filePath);
                     $taskData = json_decode($content, true);
@@ -323,12 +343,30 @@ class ScreenshotController
     private function handleGetTaskSummary(string $taskId): void
     {
         try {
-            // 按优先级顺序检查任务在各个状态目录中的存在情况
+            // 检查队列目录是否存在
+            $baseDir = $this->fileQueue->getBaseDir();
+            if (!is_dir($baseDir)) {
+                http_response_code(500);
+                echo json_encode(ApiResponse::error('QUEUE_DIR_NOT_FOUND', '队列目录不存在: ' . $baseDir));
+                return;
+            }
+            
+            // 检查各个子目录是否存在
             $directories = ['done', 'failed', 'processing', 'pending'];
+            foreach ($directories as $dir) {
+                $dirPath = "{$baseDir}/{$dir}";
+                if (!is_dir($dirPath)) {
+                    http_response_code(500);
+                    echo json_encode(ApiResponse::error('QUEUE_SUBDIR_NOT_FOUND', '队列子目录不存在: ' . $dirPath));
+                    return;
+                }
+            }
+            
+            // 按优先级顺序检查任务在各个状态目录中的存在情况
             $taskData = null;
             
             foreach ($directories as $dir) {
-                $filePath = "/app/queue/{$dir}/{$taskId}.json";
+                $filePath = "{$baseDir}/{$dir}/{$taskId}.json";
                 if (file_exists($filePath)) {
                     $content = file_get_contents($filePath);
                     $taskData = json_decode($content, true);
